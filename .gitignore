@@ -1,0 +1,6 @@
+# Pycharm
+.idea/
+
+# EEG CNN
+dataset/
+exports/

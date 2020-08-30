@@ -1,0 +1,57 @@
+name: motor_impairment_neural_disorders
+channels:
+  - defaults
+dependencies:
+  - python>=3.6
+  - pip
+  - numpy
+  - scipy
+  - matplotlib
+  - numba
+  - pandas>=0.18
+  - xlrd
+  - scikit-learn
+  - h5py
+  - pillow
+  - statsmodels
+  - jupyter
+  - joblib
+  - psutil
+  - numexpr
+  - traits>=4.6.0
+  - pyface>=6
+  - traitsui>=6
+  - imageio>=2.6.1
+  - pip:
+    # MNE tool
+    - mne
+    - https://github.com/numpy/numpydoc/archive/master.zip
+    - imageio-ffmpeg>=0.4.1
+    - vtk>=9.0.1
+    - pyvista>=0.24
+    - pyvistaqt
+    - https://github.com/enthought/mayavi/archive/master.zip
+    - PySurfer[save_movie]
+    - dipy --only-binary dipy
+    - nibabel
+    - nilearn
+    - neo
+    - python-picard
+    - tqdm
+    - PyQt5>=5.10
+    - spyder-kernels
+    # GPU
+    - cffi==1.14.0
+    - ninja==1.9.0
+    - pytorch==1.4.0
+    - _pytorch_select==0.1
+    - cudatoolkit==10.2.89
+    - pycparser==2.20
+    # environs
+    - environs==8.0.0
+    # Dependency injection microframework for Python
+    - dependency-injector==3.23.2
+    # PyYAML
+    - PyYAML==5.3.1
+    # PyWavelets
+    - PyWavelets==1.1.1
