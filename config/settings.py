@@ -1,6 +1,10 @@
+# region python
 import os
+# endregion
 
+# region package (third-party)
 from environs import Env
+# endregion
 
 
 class Setting:
@@ -35,6 +39,21 @@ class Setting:
 
     @property
     def colostate_image_export(self) -> str:
-        return r'{0}\exports\images'.format(self.__base_dir)
+        # region Kiểm tra và khởi tạo thư mục export
+        folder = r'{0}\exports'.format(self.__base_dir)
+
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        # endregion
+
+        # region Kiểm tra và khởi tạo thưc mục hình ảnh export
+        folder = r'{0}\images'.format(folder)
+
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        # end if
+        # endregion
+
+        return folder
     # end colostate_image_export()
 # end Setting

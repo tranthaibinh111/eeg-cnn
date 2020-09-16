@@ -1,4 +1,7 @@
 # region python
+import os
+
+from os import walk
 from typing import List
 # endregion
 
@@ -24,12 +27,14 @@ class ColostateService:
     __setting: Setting
     __logger: Logger
     __eeg_service: EEGService
+    __target_channels: List[str]
     # endregion
 
     def __init__(self, setting: Setting, logger: Logger, eeg_service: EEGService):
         self.__setting = setting
         self.__logger = logger
         self.__eeg_service = eeg_service
+        self.__target_channels = ['F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2']
     # end __init__()
 
     # region Private
@@ -107,10 +112,17 @@ class ColostateService:
             self.__logger.debug('Băt đẩu tải dữ liệu trial: {0}'.format(name))
 
             for index in range(len(channels)):
-                self.__logger.debug('Tải dữ liệu kênh: {0}'.format(channels[index]))
-                item = EEGSignalModel(name, channels[index], sample_rate, signals[index])
+                channel = channels[index]
+
+                if not (channel in self.__target_channels):
+                    continue
+                # end if
+
+                self.__logger.debug('Tải dữ liệu kênh: {0}'.format(channel))
+                signal = signals[index]
+                item = EEGSignalModel(name, channel, sample_rate, signal)
                 result.append(item)
-                self.__logger.debug('Kết thúc tải dữ liệu kênh: {0}'.format(channels[index]))
+                self.__logger.debug('Kết thúc tải dữ liệu kênh: {0}'.format(channel))
             # end for
 
             self.__logger.debug('Kết thúc tải dữ liệu trial: {0}'.format(name))
@@ -121,33 +133,69 @@ class ColostateService:
         return result
     # end __load_eeg()
 
-    def __image_export_path(self, image_type: str, impairment: bool):
-        return r'{0}\{1}\{2}'.format(
-            self.__setting.colostate_image_export,
-            image_type,
-            'impaired' if impairment else 'unimpaired'
-        )
+    def __image_export_path(self, image_type: str, impairment: str, subject: str, device: str, location: str,
+                            channel: str, trial: str, s_time: float, e_time: float, extract: str) -> str:
+        # region Kiểm tra và khởi tạo thư mục loại hình
+        folder = r'{0}\{1}'.format(self.__setting.colostate_image_export, image_type)
+
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        # end if
+        # endregion
+
+        # region Kiểm tra và khởi tạo thư mục hình là impaired / unimpaired
+        is_disease = impairment != 'none'
+        folder = r'{0}\{1}'.format(folder, 'impaired' if is_disease else 'unimpaired')
+
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        # end if
+
+        if is_disease:
+            folder = r'{0}\{1}'.format(folder, impairment)
+
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+            # end if
+        # end if
+        # endregion
+
+        # region Khởi tạo thư mục channels
+        folder = r'{0}\{1}'.format(folder, channel)
+
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        # endregion
+
+        # region Khởi tạo tên file
+        s_time = int(s_time) if s_time == int(s_time) else s_time
+        e_time = int(e_time) if e_time == int(e_time) else e_time
+        trial = trial.replace(' ', '')
+        file_name = r'{0}-{1}-{2}-{3}-{4}-{5}'.format(subject, device, location, trial, s_time, e_time)
+        # endregion
+
+        return r'{0}\{1}.{2}'.format(folder, file_name, extract)
     # end __image_export_path()
 
-    def __time_series_image_export_path(self, bic: BrainComputerInterfaceModel, eeg: EEGSignalModel, s_time: float,
-                                        e_time: float) -> str:
-        extract = 'png'
-        image_type = 'time-series'
-        impairment = bic.impairment != 'none'
-        folder = self.__image_export_path(image_type, impairment)
-        file_name = r'{0}_{1}_{2}_{3}'.format(bic.subject, bic.device, bic.location, bic.protocol)
-        file_name = r'{0}_{1}_{2}'.format(file_name, eeg.channel, eeg.trial)
-        path = r'{0}\{1}_{2}_{3}.{4}'.format(folder, file_name, s_time, e_time, extract)
-
-        return path
+    def __time_series_image_export_path(self, impairment: str, subject: str, device: str, location: str,
+                                        channel: str, trial: str, s_time: float, e_time: float,
+                                        image_type: str = 'time-series', extract: str = 'png') -> str:
+        return self.__image_export_path(image_type, impairment, subject, device, location, channel, trial, s_time,
+                                        e_time, extract)
     # end __time_series_image_export_path()
 
-    def __spectrogram_export_image_export_path(self, impairment: bool):
-        return self.__image_export_path('spectrogram', impairment)
+    def __spectrogram_image_export_path(self, impairment: str, subject: str, device: str, location: str,
+                                        channel: str, trial: str, s_time: float, e_time: float,
+                                        image_type: str = 'spectrograms', extract: str = 'png') -> str:
+        return self.__image_export_path(image_type, impairment, subject, device, location, channel, trial, s_time,
+                                        e_time, extract)
     # end __time_series_image_export_path()
 
-    def __scalogram_image_export_path(self, impairment: bool):
-        return self.__image_export_path('scalogram', impairment)
+    def __scalogram_image_export_path(self, impairment: str, subject: str, device: str, location: str, channel: str,
+                                      trial: str, s_time: float, e_time: float, image_type: str = 'scalograms',
+                                      extract: str = 'png') -> str:
+        return self.__image_export_path(image_type, impairment, subject, device, location, channel, trial,
+                                        s_time, e_time, extract)
     # end __time_series_image_export_path()
 
     # noinspection PyMethodMayBeStatic
@@ -248,13 +296,26 @@ class ColostateService:
         return result
     # end read_jon()
 
-    def export_time_series(self, bci: List[BrainComputerInterfaceModel], bandpass: bool = False):
+    def show_time_series(self, bci: List[BrainComputerInterfaceModel], bandpass: bool = False):
         for item in bci[:1]:
             for eeg in item.eeg[:1]:
-                # Thời gian mỗi đoạn là 3.84s
-                segment_width = 3.84
-                # Tỉ lệ lập của mỗi đoạn là 20%
-                overlap = .2
+                self.__eeg_service.show_time_series(eeg, bandpass)
+            # end for
+        # end for
+    # end show_time_series()
+
+    def export_time_series(self, bci: List[BrainComputerInterfaceModel], bandpass: bool = False,
+                           segment_width: float = 3.84, overlap: float = 0.2):
+        r"""
+        Tạo ảnh Time Series
+        :param bci:
+        :param bandpass:
+        :param segment_width: Thời gian mỗi đoạn. Mặc định là 3.84s
+        :param overlap: Tỉ lệ lập của mỗi đoạn. Mặc định là 20%
+        :return:
+        """
+        for item in bci:
+            for eeg in item.eeg:
                 # Số đoạn tính hiệu được chia cắt
                 segments = self.__split_signal(signal=np.array(eeg.signal), sample_rate=eeg.sample_rate,
                                                segment_width=segment_width, overlap=overlap)
@@ -264,7 +325,8 @@ class ColostateService:
                     s_time = np.round(index * segment_width * (1 - overlap), decimals=2)
                     e_time = np.round(s_time + segment_width, decimals=2)
                     # Export the time series of the signal
-                    path = self.__time_series_image_export_path(item, eeg, s_time, e_time)
+                    path = self.__time_series_image_export_path(item.impairment, item.subject, item.device,
+                                                                item.location, eeg.channel, eeg.trial, s_time, e_time)
                     data_export = EEGSignalModel(eeg.trial, eeg.channel, eeg.sample_rate, segment.tolist())
                     self.__eeg_service.export_time_series(path, data_export, bandpass)
                     index += 1
@@ -273,54 +335,95 @@ class ColostateService:
         # end for
     # end export_time_series()
 
-    def export_spectrogram(self, bci: List[BrainComputerInterfaceModel], impairment: bool = False):
-        folder = self.__spectrogram_export_image_export_path(impairment)
-        extract = 'png'
-
+    def export_spectrogram(self, bci: List[BrainComputerInterfaceModel], segment_width: float = 3.84,
+                           overlap: float = 0.2):
+        r"""
+        Tạo ảnh Spectrogram
+        :param bci:
+        :param segment_width: Thời gian mỗi đoạn. Mặc định là 3.84s
+        :param overlap: Tỉ lệ lập của mỗi đoạn. Mặc định là 20%
+        :return:
+        """
         for item in bci:
-            file_name = r'{0}_{1}_{2}_{3}'.format(item.subject, item.device, item.location, item.protocol)
-
             for eeg in item.eeg:
-                file_name = r'{0}_{1}_{2}'.format(file_name, eeg.channel, eeg.trial)
+                # Số đoạn tính hiệu được chia cắt
+                segments = self.__split_signal(signal=np.array(eeg.signal), sample_rate=eeg.sample_rate,
+                                               segment_width=segment_width, overlap=overlap)
                 index = 0
 
-                for segment in np.self.__split_signal(eeg.signal, eeg.sample_rate):
-                    time = int(np.floor(len(segment) / float(eeg.sample_rate)))
-                    s_time = index * time
-                    e_time = s_time + time
-                    file_name = r'{0}_{1}_{2}'.format(file_name, s_time, e_time)
+                for segment in segments:
+                    s_time = np.round(index * segment_width * (1 - overlap), decimals=2)
+                    e_time = np.round(s_time + segment_width, decimals=2)
                     # Export the time series of the signal
-                    path = r'{0}\{1}.{2}'.format(folder, file_name, extract)
-                    data_export = EEGSignalModel(eeg.trial, eeg.channel, eeg.sample_rate, segment)
+                    path = self.__spectrogram_image_export_path(item.impairment, item.subject, item.device,
+                                                                item.location, eeg.channel, eeg.trial, s_time, e_time)
+                    data_export = EEGSignalModel(eeg.trial, eeg.channel, eeg.sample_rate, segment.tolist())
                     self.__eeg_service.export_spectrogram(path, data_export)
+                    index += 1
                 # end for
             # end for
         # end for
     # end export_spectrogram()
 
-    def export_scalogram(self, bci: List[BrainComputerInterfaceModel], impairment: bool = False):
-        folder = self.__scalogram_image_export_path(impairment)
-        extract = 'png'
-
+    def export_scalogram(self, bci: List[BrainComputerInterfaceModel], segment_width: float = 3.84,
+                         overlap: float = 0.2):
+        r"""
+        Tạo ảnh Scalogram
+        :param bci:
+        :param segment_width: Thời gian mỗi đoạn. Mặc định là 3.84s
+        :param overlap: Tỉ lệ lập của mỗi đoạn. Mặc định là 20%
+        :return:
+        """
         for item in bci:
-            file_name = r'{0}_{1}_{2}_{3}'.format(item.subject, item.device, item.location, item.protocol)
-
             for eeg in item.eeg:
-                file_name = r'{0}_{1}_{2}'.format(file_name, eeg.channel, eeg.trial)
+                # Số đoạn tính hiệu được chia cắt
+                segments = self.__split_signal(signal=np.array(eeg.signal), sample_rate=eeg.sample_rate,
+                                               segment_width=segment_width, overlap=overlap)
                 index = 0
 
-                for segment in np.self.__split_signal(eeg.signal, eeg.sample_rate):
-                    time = int(np.floor(len(segment) / float(eeg.sample_rate)))
-                    s_time = index * time
-                    e_time = s_time + time
-                    file_name = r'{0}_{1}_{2}'.format(file_name, s_time, e_time)
+                for segment in segments:
+                    s_time = np.round(index * segment_width * (1 - overlap), decimals=2)
+                    e_time = np.round(s_time + segment_width, decimals=2)
                     # Export the time series of the signal
-                    path = r'{0}\{1}.{2}'.format(folder, file_name, extract)
-                    data_export = EEGSignalModel(eeg.trial, eeg.channel, eeg.sample_rate, segment)
+                    path = self.__scalogram_image_export_path(item.impairment, item.subject, item.device, item.location,
+                                                              eeg.channel, eeg.trial, s_time, e_time)
+                    data_export = EEGSignalModel(eeg.trial, eeg.channel, eeg.sample_rate, segment.tolist())
                     self.__eeg_service.export_scalogram(path, data_export)
+                    index += 1
                 # end for
             # end for
         # end for
     # end export_scalogram()
+
+    def export_image(self, data_folder: str, time_series: bool = True, spectrogram: bool = True,
+                     scalogram: bool = True):
+        if not data_folder:
+            return
+        # end if
+
+        for (dirpath, dirnames, filenames) in walk(data_folder):
+            for filename in filenames:
+                # region Đọc dữ liệu từ file
+                json_path = r'{0}\{1}'.format(dirpath, filename)
+                data: List[BrainComputerInterfaceModel] = self.read_json(json_path)
+                # endregion
+
+                # region Export Image
+                # Export Time Series Image
+                if time_series:
+                    self.export_time_series(bci=data, bandpass=True)
+                # end if
+                # Export Spectrogram Image
+                if spectrogram:
+                    self.export_spectrogram(bci=data)
+                # end if
+                # Export Scalogram
+                if scalogram:
+                    self.export_scalogram(bci=data)
+                # end if
+                # endregion
+            # end for
+        # end for
+    # end export_image
     # endregion
 # end ColostateService

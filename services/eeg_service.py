@@ -79,7 +79,7 @@ class EEGService:
 
         # https://www.youtube.com/watch?v=g1_wcbGUcDY
         # see better (power in dBs)
-        power = np.array(np.ma.log10(zxx), dtype=np.float64)
+        power = np.array(10 * np.ma.log10(np.abs(zxx)), dtype=np.float64)
         return f, t, power
     # end __stft()
 
@@ -130,6 +130,20 @@ class EEGService:
         return y
     # end butter_bandpass_filter()
 
+    def show_time_series(self, eeg_signal: EEGSignalModel, bandpass: bool = False):
+        if not bandpass:
+            signal = eeg_signal.signal
+        else:
+            signal = self.butter_bandpass_filter(eeg_signal.signal, eeg_signal.sample_rate)
+        # end if
+
+        length = len(signal) / eeg_signal.sample_rate
+        time = np.linspace(0, length, len(signal))
+
+        plt.plot(time, signal)
+        plt.show()
+    # end show_time_series()
+
     def export_time_series(self, path: str, eeg_signal: EEGSignalModel, bandpass: bool = False):
         r"""
         Export the time series image of the signal
@@ -144,8 +158,6 @@ class EEGService:
         dpi = 300.0
         signal = eeg_signal.signal if not bandpass else self.butter_bandpass_filter(eeg_signal.signal,
                                                                                     eeg_signal.sample_rate)
-        # length = np.ceil(len(signal) / float(eeg_signal.sample_rate))
-        # time = np.linspace(0., length, num=int(length), endpoint=False)
         # Plot
         figure = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
         plt.axis('off')
@@ -162,16 +174,19 @@ class EEGService:
         :param eeg_signal: The EEG signal
         :return: The spectrogram image of the signal
         """
-        w = 1291
+        self.__logger.debug('Bắt đầu khởi tạo hình ảnh Spectrogram {0}'.format(path))
+        w = 496
         h = 499
         dpi = 300.0
         signal = self.butter_bandpass_filter(eeg_signal.signal, eeg_signal.sample_rate)
         f, t, power = self.__stft(eeg_signal.sample_rate, signal)
         # Plot
-        plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
+        figure = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
         plt.axis('off')
-        plt.pcolormesh(t, f, power, cmap='viridis', vmin=power.min(), vmax=power.max())
+        plt.pcolormesh(t, f, power.tolist(), cmap='viridis', vmin=power.min(), vmax=power.max())
         plt.savefig(fname=path, dpi=dpi, bbox_inches='tight', pad_inches=0)
+        plt.close(figure)
+        self.__logger.debug('Kết thúc quá trình khởi tạo hình ảnh Spectrogram {0}'.format(path))
     # end export_time_series()
 
     def export_scalogram(self, path: str, eeg_signal: EEGSignalModel):
@@ -181,16 +196,19 @@ class EEGService:
         :param eeg_signal: The EEG signal
         :return: The scalogram image of the signal
         """
-        w = 1291
+        self.__logger.debug('Bắt đầu khởi tạo hình ảnh Scalogram {0}'.format(path))
+        w = 496
         h = 499
         dpi = 300.0
         signal = self.butter_bandpass_filter(eeg_signal.signal, eeg_signal.sample_rate)
         power = self.__cwt(signal)
         # Plot
-        plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
+        figure = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
         plt.axis('off')
-        plt.imshow(power, cmap='jet', aspect='auto', vmin=power.min(), vmax=power.max())
+        plt.imshow(power.tolist(), cmap='jet', aspect='auto', vmin=power.min(), vmax=power.max())
         plt.savefig(fname=path, dpi=dpi, bbox_inches='tight', pad_inches=0)
+        plt.close(figure)
+        self.__logger.debug('Kết thúc quá trình khởi tạo hình ảnh Scalogram {0}'.format(path))
     # end export_time_series()
     # endregion
 
