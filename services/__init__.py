@@ -1,4 +1,4 @@
 from .eeg_service import EEGService
 from .colostate_service import ColostateService
-from .cnn_service import CNNService
+from .simple_cnn_service import SimpleCNNService
 from .container import IocContainer

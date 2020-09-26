@@ -8,7 +8,7 @@ from config import Setting
 # utils
 from utlis import Logger
 # services
-from services import ColostateService, CNNService, IocContainer
+from services import ColostateService, SimpleCNNService, IocContainer
 # models
 from models import BrainComputerInterfaceModel
 # endregion
@@ -38,17 +38,19 @@ def main():
     # endregion
 
     # region Khởi tạo dữ liệu train / test
-    __cnn_service: CNNService = __container.cnn_service()
+    __simple_cnn_service: SimpleCNNService = __container.simple_cnn_service()
     data_folder: str = r'{0}\scalograms\C3'.format(__setting.colostate_image_export)
     img_height = 180
     img_width = 180
-    train_ds, val_ds = __cnn_service.load_data(data_folder, img_height=img_height, img_width=img_width)
+    train_ds, val_ds = __simple_cnn_service.load_data(data_folder, img_height=img_height, img_width=img_width)
 
 
     # create cnn model
-    cnn_model = __cnn_service.build_cnn_model("relu", (img_height, img_width, 3))
+    cnn_model = __simple_cnn_service.build_model("relu", (img_height, img_width, 3))
     # train cnn model
-    trained_cnn_model, cnn_history = __cnn_service.compile_and_fit_model(cnn_model, train_ds, val_ds, n_epochs=30)
+    trained_cnn_model, cnn_history = __simple_cnn_service.compile_and_fit_model(cnn_model, train_ds, val_ds, n_epochs=50)
+    # show result train
+    __simple_cnn_service.show_result_train(cnn_history)
     # endregion
 # end main()
 

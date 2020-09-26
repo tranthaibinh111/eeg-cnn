@@ -5,12 +5,11 @@ import pathlib
 # region Package (third-party)
 # TensorFlow and tf.keras
 import tensorflow as tf
-# import keras (high level API) wiht tensorflow as backend
-from tensorflow import keras
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers.experimental.preprocessing import Rescaling
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dense, Flatten
-from tensorflow.keras.callbacks import ModelCheckpoint
+# endregion
+
+# region Matplotlib
+import matplotlib.pyplot as plt
+# endregion
 # endregion
 
 # region motor impairment neural disorders
@@ -60,62 +59,14 @@ class CNNService:
         return train_ds, val_ds
     # end load_data()
 
-    def build_cnn_model(self, activation, input_shape=(384, 384, 3)):
-        model = Sequential()
-
-        # Standardize the data
-        model.add(Rescaling(1. / 255, input_shape=input_shape))
-
-        # 3 Convolution layer with Max polling
-        model.add(Conv2D(16, 5, activation=activation, padding='same', kernel_initializer="he_normal"))
-        model.add(MaxPooling2D())
-        model.add(Conv2D(32, 5, activation=activation, padding='same', kernel_initializer="he_normal"))
-        model.add(MaxPooling2D())
-        model.add(Conv2D(64, 5, activation=activation, padding='same', kernel_initializer="he_normal"))
-        model.add(MaxPooling2D())
-
-        model.add(Flatten())
-
-        # 3 Full connected layer
-        model.add(Dense(128, activation=activation, kernel_initializer="he_normal"))
-        model.add(Dense(36, activation=activation, kernel_initializer="he_normal"))
-        model.add(Dense(4, activation='softmax'))  # 4 classes
-
-        # summarize the model
-        model.summary()
-
-        return model
-    # end build_cnn_model()
-
     # noinspection PyMethodMayBeStatic
-    def compile_and_fit_model(self, model, train_ds, val_ds, batch_size: int = 32, n_epochs: int = 10):
-        # Configure the dataset for performance
-        autotune = tf.data.experimental.AUTOTUNE
-
-        train_ds = train_ds.cache().prefetch(buffer_size=autotune)
-        val_ds = val_ds.cache().prefetch(buffer_size=autotune)
-
-        # compile the model
-        model.compile(
-            optimizer='adam',
-            loss='sparse_categorical_crossentropy',
-            metrics=['sparse_categorical_accuracy'])
-
-        # define callbacks
-        callbacks = [
-            ModelCheckpoint(
-                filepath='healthcare_model.h5',
-                monitor='val_sparse_categorical_accuracy',
-                save_best_only=True)]
-
-        # fit the model
-        history = model.fit(
-            train_ds,
-            batch_size=batch_size,
-            epochs=n_epochs,
-            verbose=1,
-            callbacks=callbacks,
-            validation_data=val_ds)
-
-        return model, history
-    # end compile_and_fit_model()
+    def show_result_train(self, data):
+        plt.figure()
+        plt.plot(data.history['accuracy'], label='accuracy')
+        plt.plot(data.history['val_accuracy'], label='val_accuracy')
+        plt.xlabel('Epoch')
+        plt.ylabel('Accuracy')
+        plt.ylim([0, 1])
+        plt.legend(loc='lower right')
+        plt.show()
+    # end show_train
