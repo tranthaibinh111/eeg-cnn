@@ -2,6 +2,16 @@
 from typing import List
 # endregion
 
+# region Package (third-party)
+# region TensorFlow and tf.keras
+import tensorflow as tf
+# endregion
+
+# region Numpy
+import numpy as np
+# endregion
+# endregion
+
 # region motor impairment neural disorders
 # config
 from config import Setting
@@ -43,14 +53,28 @@ def main():
     img_height = 180
     img_width = 180
     train_ds, val_ds = __simple_cnn_service.load_data(data_folder, img_height=img_height, img_width=img_width)
+    labels = train_ds.class_names
 
+    # Configure the dataset for performance
+    autotune = tf.data.experimental.AUTOTUNE
+
+    train_ds = train_ds.cache().prefetch(buffer_size=autotune)
+    val_ds = val_ds.cache().prefetch(buffer_size=autotune)
+    val_data, val_labels = __simple_cnn_service.get_data_and_labels(val_ds)
+    val_labels = val_labels.numpy()
 
     # create cnn model
     cnn_model = __simple_cnn_service.build_model("relu", (img_height, img_width, 3))
+
     # train cnn model
-    trained_cnn_model, cnn_history = __simple_cnn_service.compile_and_fit_model(cnn_model, train_ds, val_ds, n_epochs=50)
-    # show result train
-    __simple_cnn_service.show_result_train(cnn_history)
+    cnn_model = __simple_cnn_service.compile_and_fit_model(cnn_model, train_ds, n_epochs=3)
+    pred_labels = cnn_model.predict_classes(val_data)
+
+    # evaluate
+    __simple_cnn_service.evaluate(np.array(val_labels, copy=True), np.array(pred_labels, copy=True))
+
+    # show confusion matrix
+    __simple_cnn_service.show_confusion_matrix(labels, val_labels, pred_labels)
     # endregion
 # end main()
 

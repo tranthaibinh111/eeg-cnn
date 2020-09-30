@@ -57,13 +57,7 @@ class SimpleCNNService(CNNService):
     # end build_model()
 
     # noinspection PyMethodMayBeStatic
-    def compile_and_fit_model(self, model, train_ds, val_ds, batch_size: int = 32, n_epochs: int = 10):
-        # Configure the dataset for performance
-        autotune = tf.data.experimental.AUTOTUNE
-
-        train_ds = train_ds.cache().prefetch(buffer_size=autotune)
-        val_ds = val_ds.cache().prefetch(buffer_size=autotune)
-
+    def compile_and_fit_model(self, model, train_ds, batch_size: int = 32, n_epochs: int = 10):
         # compile the model
         model.compile(
             optimizer=keras.optimizers.Adam(learning_rate=0.0001),
@@ -78,13 +72,12 @@ class SimpleCNNService(CNNService):
                 save_best_only=True)]
 
         # fit the model
-        history = model.fit(
+        model.fit(
             train_ds,
             batch_size=batch_size,
             epochs=n_epochs,
             verbose=1,
-            callbacks=callbacks,
-            validation_data=val_ds)
+            callbacks=callbacks)
 
-        return model, history
+        return model
     # end compile_and_fit_model()
