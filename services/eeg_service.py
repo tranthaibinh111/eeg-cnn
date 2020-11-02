@@ -1,5 +1,5 @@
 # region python
-from typing import List, Tuple
+from typing import Tuple
 # endregion
 
 # region package (third-party)
@@ -7,8 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pywt
 
-from dependency_injector import containers, providers
-from scipy.signal import butter, freqz, lfilter, stft
+from scipy.signal import butter, lfilter, stft
 # endregion
 
 # region motor impairment neural disorders
@@ -30,7 +29,9 @@ class EEGService:
     # end __init__()
 
     # region Private
-    def __butter_bandpass(self, lowcut: float, highcut: float, fs: float, order: int = 3):
+    # noinspection PyMethodMayBeStatic
+    def __butter_bandpass(self, lowcut: float, highcut: float, fs: float,
+                          order: int = 3) -> Tuple[np.ndarray, np.ndarray]:
         r"""
         Butterworth digital and analog filter design.
 
@@ -48,25 +49,26 @@ class EEGService:
         nyq = 0.5 * fs
         low = lowcut / nyq
         high = highcut / nyq
-        b, a = butter(order, [low, high], btype='band')
+        b, a = butter(N=order, Wn=[low, high], btype='band')
 
         return b, a
     # end __butter_bandpass()
 
     # noinspection PyMethodMayBeStatic
-    def __stft(self, fs: float, data: List[float]) -> Tuple[List[float], List[float], List[float]]:
+    def __stft(self, fs: float, data: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         r"""
         Compute the Short Time Fourier Transform (STFT).
-        [23] P. Xia, J. Hu, and Y. Peng, “UCI-Based Estimation of Limb Movement Using Deep Learning With Recurrent Convolutional Neural Networks,” Artif. Organs, vol. 42, no. 5, pp. E67–E77, 2018
+        [23] P. Xia, J. Hu, and Y. Peng, “UCI-Based Estimation of Limb Movement Using Deep Learning With Recurrent
+        Convolutional Neural Networks,” Artif. Organs, vol. 42, no. 5, pp. E67–E77, 2018
         :param fs: The frequency
-        :param data: List[float]
+        :param data: ndarray (type: float)
             UCI signal data
         :return:
-            frequencies: List[float]
+            frequencies: ndarray (type: float)
                 Array of frequencies
-            times: List[float]
+            times: ndarray (type: float)
                 Array of times
-            power: List[float]
+            power: ndarray (type: float)
                 STFT of `x`
         """
         f, t, zxx = stft(
@@ -83,14 +85,16 @@ class EEGService:
         return f, t, power
     # end __stft()
 
-    def __cwt(self, data: List[float]) -> List[float]:
+    # noinspection PyMethodMayBeStatic
+    def __cwt(self, data: np.ndarray) -> np.ndarray:
         r"""
         One dimensional Continuous Wavelet Transform.
-        [25] M. P. G. Bhosale and S. T. Patil, “Classification of EEG Signals Using Wavelet Transform and Hybrid Classifier For Parkinson’s Disease Detection,” Int. J. Eng., vol. 2, no. 1, 2013.
-        :param data: List[float]
+        [25] M. P. G. Bhosale and S. T. Patil, “Classification of EEG Signals Using Wavelet Transform and Hybrid
+        Classifier For Parkinson’s Disease Detection,” Int. J. Eng., vol. 2, no. 1, 2013.
+        :param data: ndarray (type: float)
             UCI signal data
         :return:
-            power: List[float]
+            power: ndarray (type: float)
                 WT of `x`
         """
         scales = np.arange(1, 51)
@@ -104,8 +108,8 @@ class EEGService:
 
     # region Public
     # region Handle
-    def butter_bandpass_filter(self, data: List[float], fs: float, lowcut: float = 0.5, highcut: float = 7.5,
-                               order: int = 3):
+    def butter_bandpass_filter(self, data: np.ndarray, fs: float, lowcut: float = 0.5, highcut: float = 7.5,
+                               order: int = 3) -> np.ndarray:
         r"""
         We filtered frequency band from 0.5 Hz–7.5 Hz to remove low and high frequency noises and non-signal artefacts.
         Our primary focus was put on delta and theta waves frequency ranges, which based on previous work [2], [12]
@@ -127,7 +131,8 @@ class EEGService:
         """
         b, a = self.__butter_bandpass(lowcut, highcut, fs, order=order)
         y = lfilter(b, a, data)
-        return y
+
+        return np.array(y, dtype=np.float)
     # end butter_bandpass_filter()
 
     def show_time_series(self, eeg_signal: EEGSignalModel, bandpass: bool = False):
@@ -144,107 +149,87 @@ class EEGService:
         plt.show()
     # end show_time_series()
 
-    def export_time_series(self, path: str, eeg_signal: EEGSignalModel, bandpass: bool = False):
+    def export_time_series(self, path: str, eeg_signal: EEGSignalModel, bandpass: bool = False, w: int = 496,
+                           h: int = 496, dpi: int = 300):
         r"""
         Export the time series image of the signal
         :param path: The path to save the file
         :param eeg_signal: The EEG signal
         :param bandpass: Are you execute the bandpass filter 0.5Hz - 7.5Hz
+        :param w: image width
+        :param h: image height
+        :param dpi: dots-per-inch
         :return: The time series image of the signal
         """
-        self.__logger.debug('Bắt đầu khởi tạo hình ảnh Time Series {0}'.format(path))
-        w = 496
-        h = 499
-        dpi = 300.0
-        signal = eeg_signal.signal if not bandpass else self.butter_bandpass_filter(eeg_signal.signal,
-                                                                                    eeg_signal.sample_rate)
-        # Plot
-        figure = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
-        plt.axis('off')
-        plt.plot(signal)
-        plt.savefig(fname=path, dpi=dpi, bbox_inches='tight', pad_inches=0)
-        plt.close(figure)
-        self.__logger.debug('Kết thúc quá trình khởi tạo hình ảnh Time Series {0}'.format(path))
+        try:
+            self.__logger.debug('Bắt đầu khởi tạo hình ảnh Time Series {0}'.format(path))
+            signal = eeg_signal.signal if not bandpass else self.butter_bandpass_filter(eeg_signal.signal,
+                                                                                        eeg_signal.sample_rate)
+            # Plot
+            figure = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
+            plt.axis('off')
+            plt.plot(signal)
+            plt.savefig(fname=path, dpi=dpi, bbox_inches='tight', pad_inches=0)
+            plt.close(figure)
+        except Exception as ex:
+            self.__logger.error(ex)
+        finally:
+            self.__logger.debug('Kết thúc quá trình khởi tạo hình ảnh Time Series {0}'.format(path))
+        # end try
     # end export_time_series()
 
-    def export_spectrogram(self, path: str, eeg_signal: EEGSignalModel):
+    def export_spectrogram(self, path: str, eeg_signal: EEGSignalModel, w: int = 496, h: int = 496, dpi: int = 300):
         r"""
         Export the spectrogram image of the signal
         :param path: The path to save the file
         :param eeg_signal: The EEG signal
+        :param w: image width
+        :param h: image height
+        :param dpi: dots-per-inch
         :return: The spectrogram image of the signal
         """
-        self.__logger.debug('Bắt đầu khởi tạo hình ảnh Spectrogram {0}'.format(path))
-        w = 496
-        h = 499
-        dpi = 300.0
-        signal = self.butter_bandpass_filter(eeg_signal.signal, eeg_signal.sample_rate)
-        f, t, power = self.__stft(eeg_signal.sample_rate, signal)
-        # Plot
-        figure = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
-        plt.axis('off')
-        plt.pcolormesh(t, f, power.tolist(), cmap='viridis', vmin=power.min(), vmax=power.max())
-        plt.savefig(fname=path, dpi=dpi, bbox_inches='tight', pad_inches=0)
-        plt.close(figure)
-        self.__logger.debug('Kết thúc quá trình khởi tạo hình ảnh Spectrogram {0}'.format(path))
+        try:
+            self.__logger.debug('Bắt đầu khởi tạo hình ảnh Spectrogram {0}'.format(path))
+            signal = self.butter_bandpass_filter(eeg_signal.signal, eeg_signal.sample_rate)
+            f, t, power = self.__stft(eeg_signal.sample_rate, signal)
+            # Plot
+            figure = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
+            plt.axis('off')
+            plt.pcolormesh(t, f, power.tolist(), cmap='viridis', vmin=np.amin(power), vmax=np.amax(power))
+            plt.savefig(fname=path, dpi=dpi, bbox_inches='tight', pad_inches=0)
+            plt.close(figure)
+        except Exception as ex:
+            self.__logger.error(ex)
+        finally:
+            self.__logger.debug('Kết thúc quá trình khởi tạo hình ảnh Spectrogram {0}'.format(path))
+        # end try
     # end export_time_series()
 
-    def export_scalogram(self, path: str, eeg_signal: EEGSignalModel):
+    def export_scalogram(self, path: str, eeg_signal: EEGSignalModel, w: int = 496, h: int = 496, dpi: int = 300):
         r"""
         Export the scalogram image of the signal
         :param path: The path to save the file
         :param eeg_signal: The EEG signal
+        :param w: image width
+        :param h: image height
+        :param dpi: dots-per-inch
         :return: The scalogram image of the signal
         """
-        self.__logger.debug('Bắt đầu khởi tạo hình ảnh Scalogram {0}'.format(path))
-        w = 496
-        h = 499
-        dpi = 300.0
-        signal = self.butter_bandpass_filter(eeg_signal.signal, eeg_signal.sample_rate)
-        power = self.__cwt(signal)
-        # Plot
-        figure = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
-        plt.axis('off')
-        plt.imshow(power.tolist(), cmap='jet', aspect='auto', vmin=power.min(), vmax=power.max())
-        plt.savefig(fname=path, dpi=dpi, bbox_inches='tight', pad_inches=0)
-        plt.close(figure)
-        self.__logger.debug('Kết thúc quá trình khởi tạo hình ảnh Scalogram {0}'.format(path))
+        try:
+            self.__logger.debug('Bắt đầu khởi tạo hình ảnh Scalogram {0}'.format(path))
+            signal = self.butter_bandpass_filter(eeg_signal.signal, eeg_signal.sample_rate)
+            power = self.__cwt(signal)
+            # Plot
+            figure = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
+            plt.axis('off')
+            plt.imshow(power.tolist(), cmap='jet', aspect='auto', vmin=np.amin(power), vmax=np.amax(power))
+            plt.savefig(fname=path, dpi=dpi, bbox_inches='tight', pad_inches=0)
+            plt.close(figure)
+        except Exception as ex:
+            self.__logger.error(ex)
+        finally:
+            self.__logger.debug('Kết thúc quá trình khởi tạo hình ảnh Scalogram {0}'.format(path))
     # end export_time_series()
-    # endregion
-
-    # region Show Plot
-    def plot_butter_bandpass(self, fs: float, lowcut: float = 0.5, highcut: float = 7.5, orders: List[int] = [3, 6, 9]):
-        r"""
-        Plot the frequency response for a few different orders.
-        :param fs: The sample rate
-        :param lowcut: The frequency min
-        :param highcut: The frequency max
-        :param orders: The array order of the filter list
-        """
-        for order in orders:
-            b, a = self.__butter_bandpass(lowcut, highcut, fs, order=order)
-            w, h = freqz(b, a, worN=2000)
-            plt.plot((fs * 0.5 / np.pi) * w, np.abs(h), label="order = %d" % order)
-        # end for
-
-        plt.plot([0, 0.5 * fs], [np.sqrt(0.5), np.sqrt(0.5)], '--', label='sqrt(0.5)')
-        plt.xlabel('Frequency (Hz)')
-        plt.ylabel('Gain')
-        plt.grid(True)
-        plt.legend(loc='best')
-        plt.show()
-    # end plot_butter_bandpass()
-
-    # def plot_mne(self):
-    #     import mne
-    #     from mne.io.edf.edf import RawEDF
-    #
-    #     eeg_file = '{0}\\dataset\\{1}'.format(os.getcwd(), 'huynh-van-phi.edf')
-    #     channels = ['EEG F3-Cz', 'EEG F4-Cz', 'EEG C3-Cz', 'EEG C4-Cz', 'EEG P3-Cz', 'EEG P4-Cz', 'EEG O1-Cz', 'EEG O2-Cz']
-    #     raw: RawEDF = mne.io.read_raw_edf(eeg_file, preload=True)
-    #     print(len(raw.get_data('EEG F3-Cz')[0]))
-    #     print(raw.info)
-    #     raw.pick(channels).plot(duration=60, n_channels=8, scalings=dict(eeg=20e-5), block=True)
     # endregion
     # endregion
 # end EEGService

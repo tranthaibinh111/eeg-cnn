@@ -1,6 +1,15 @@
 # Pycharm
 .idea/
+__pycache__/
 
 # EEG CNN
-dataset/
-exports/
+# Dataset
+dataset/colostate/subjects_impaired/
+dataset/colostate/subjects_not_impaired/
+dataset/y_duoc
+
+# Image export
+exports/images/
+
+# Image evaluate
+evaluate/test-data/

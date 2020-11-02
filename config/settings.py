@@ -44,6 +44,7 @@ class Setting:
 
         if not os.path.exists(folder):
             os.makedirs(folder)
+        # end if
         # endregion
 
         # region Kiểm tra và khởi tạo thưc mục hình ảnh export
@@ -56,4 +57,51 @@ class Setting:
 
         return folder
     # end colostate_image_export()
+
+    @property
+    def h5_export(self) -> str:
+        # region Kiểm tra và khởi tạo thư mục export
+        folder = r'{0}\exports'.format(self.__base_dir)
+
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        # end if
+        # endregion
+
+        # region Kiểm tra và khởi tạo thưc mục H5 export
+        folder = r'{0}\h5'.format(folder)
+
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        # end if
+        # endregion
+
+        return folder
+    # end h5_export
+
+    @property
+    def evaluate_export(self) -> str:
+        # region Kiểm tra và khởi tạo thư mục export
+        folder = r'{0}\evaluate'.format(self.__base_dir)
+
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        # end if
+        # endregion
+
+        return folder
+    # end
+
+    @property
+    def test_data_folder(self) -> str:
+        # region Kiểm tra và khởi tạo thư test data
+        folder = r'{0}\test-data'.format(self.evaluate_export)
+
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        # end if
+        # endregion
+
+        return folder
+    # end
 # end Setting

@@ -1,6 +1,12 @@
+# region python
 from typing import List
+# endregion
 
+# region motor impairment neural disorders
+# region models
 from .eeg_signal_model import EEGSignalModel
+# endregion
+# endregion
 
 
 class BrainComputerInterfaceModel:
@@ -32,3 +38,4 @@ class BrainComputerInterfaceModel:
         self.impairment = ''
         self.subject = 0
     # end __init__()
+# end BrainComputerInterfaceModel

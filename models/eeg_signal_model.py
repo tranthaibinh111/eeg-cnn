@@ -1,13 +1,17 @@
-from typing import List
+# region package (third-party)
+# region Numpy
+import numpy as np
+# endregion
+# endregion
 
 
 class EEGSignalModel:
     # region Parameters
     # region Private
-    __trial: int
+    __trial: str
     __channel: str
     __sample_rate: int
-    __signal: List[float]
+    __signal: np.ndarray
     # endregion
     # endregion
 
@@ -31,13 +35,13 @@ class EEGSignalModel:
     # end channel()
 
     @property
-    def signal(self) -> List[float]:
+    def signal(self) -> np.ndarray:
         return self.__signal
 
     # end channel()
     # endregion
 
-    def __init__(self, trial: str, channel: str, sample_rate: int, signal: List[float]):
+    def __init__(self, trial: str, channel: str, sample_rate: int, signal: np.ndarray):
         self.__trial = trial
         self.__channel = channel
         self.__sample_rate = sample_rate
