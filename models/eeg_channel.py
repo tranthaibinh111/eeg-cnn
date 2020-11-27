@@ -12,4 +12,4 @@ class EEGChannel(Enum):
     O2 = "O2"
     P3 = "P3"
     P4 = "P4"
-# end ImageType
+# end EEGChannel

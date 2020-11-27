@@ -1,5 +1,4 @@
 # region package (third-party)
-import collections
 import dependency_injector.containers as containers
 import dependency_injector.providers as providers
 # endregion

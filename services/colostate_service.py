@@ -18,7 +18,7 @@ from utlis import Logger
 # enum
 from models import EEGImageType
 # models
-from models import BrainComputerInterfaceModel, EEGSignalModel
+from models import BrainComputerInterfaceModel as BCIModel, EEGSignalModel
 # service
 from .eeg_service import EEGService
 # endregion
@@ -40,6 +40,7 @@ class ColostateService:
     # end __init__()
 
     # region Private
+    # region Load the Colorado State University dataset
     def __check_struct_json(self, headers: List[str]) -> bool:
         self.__logger.debug('Bắt đầu kiểm tra cấu trúc file')
 
@@ -134,11 +135,31 @@ class ColostateService:
 
         return result
     # end __load_eeg()
+    # endregion
 
-    def __image_export_path(self, folder_name: str, channel: str, impairment: str, subject: int, device: str,
-                            protocol: str, trial: str, s_time: float, e_time: float) -> str:
+    # region Get image export path
+    def __get_image_export_path(self, folder_name: str, channel: str, impairment: str, subject: int, device: str,
+                                protocol: str, trial: str, is_full_time: bool, s_time: float, e_time: float) -> str:
+        r"""
+        Tạo path cho image
+        :param folder_name: (time-series | spectrogram | scalogram)
+        :param channel: Tên kênh đo
+        :param impairment: Chuẩn đoán suy giảm thân kinh
+        :param subject: Tên người thự nghiệm
+        :param device: Thiết bị đo
+        :param protocol: Cổng kết nối thiết bị
+        :param trial: Các lần đo
+        :param is_full_time: Hình ảnh thể hiện hết thời gian dữ liệu
+        :param s_time: Thời gian bắt đầu
+        :param e_time: Thời gian kết thúc
+        :return: Path của image chuẩn bị export
+        """
         # region Kiểm tra và khởi tạo thư mục loại hình
-        folder = r'{0}\{1}'.format(self.__setting.colostate_image_export, folder_name)
+        if is_full_time:
+            folder = f'{self.__setting.image_export_folder}\\full-time\\{folder_name}'
+        else:
+            folder = f'{self.__setting.image_export_folder}\\{folder_name}'
+        # end if
 
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -146,7 +167,7 @@ class ColostateService:
         # endregion
 
         # region Khởi tạo thư mục channels
-        folder = r'{0}\{1}'.format(folder, channel)
+        folder = f'{folder}\\{channel}'
 
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -155,7 +176,7 @@ class ColostateService:
 
         # region Khởi tạo thư mục impairment
         impairment = impairment if impairment != 'none' else 'normal'
-        folder = r'{0}\{1}'.format(folder, impairment)
+        folder = f'{folder}\\{impairment}'
 
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -166,15 +187,29 @@ class ColostateService:
         s_time = str(s_time).replace('.', 's')
         e_time = str(e_time).replace('.', 's')
         trial = trial.replace(' ', '')
-        file_name = r's{0}_{1}_{2}_{3}_{4}_{5}.png'.format(subject, device, protocol, trial, s_time, e_time)
+        file_name = f's{subject}_{device}_{protocol}_{trial}_{s_time}_{e_time}.png'
         # endregion
 
-        return r'{0}\{1}'.format(folder, file_name)
-    # end __image_export_path()
+        return f'{folder}\\{file_name}'
+    # end __get_image_export_path()
 
-    def __time_series_image_export_path(self, channel: str, impairment: str, subject: int, device: str, protocol: str,
-                                        trial: str, s_time: float, e_time: float) -> str:
-        return self.__image_export_path(
+    def __get_time_series_image_export_path(self, channel: str, impairment: str, subject: int, device: str,
+                                            protocol: str, trial: str, s_time: float, e_time: float,
+                                            is_full_time: bool = False) -> str:
+        r"""
+        Tạo path cho image Time-Series
+        :param channel: Tên kênh đo
+        :param impairment: Chuẩn đoán suy giảm thân kinh
+        :param subject: Tên người thự nghiệm
+        :param device: Thiết bị đo
+        :param protocol: Cổng kết nối thiết bị
+        :param trial: Các lần đo
+        :param s_time: Thời gian bắt đầu
+        :param e_time: Thời gian kết thúc
+        :param is_full_time: Hình ảnh thể hiện hết thời gian dữ liệu
+        :return: Path của image Time-Series chuẩn bị export
+        """
+        return self.__get_image_export_path(
             folder_name=EEGImageType.TimeSeries.value,
             channel=channel,
             impairment=impairment,
@@ -182,14 +217,29 @@ class ColostateService:
             device=device,
             protocol=protocol,
             trial=trial,
+            is_full_time=is_full_time,
             s_time=s_time,
             e_time=e_time
         )
-    # end __time_series_image_export_path()
+    # end __get_time_series_image_export_path()
 
-    def __spectrogram_image_export_path(self, channel: str, impairment: str, subject: int, device: str, protocol: str,
-                                        trial: str, s_time: float, e_time: float) -> str:
-        return self.__image_export_path(
+    def __get_spectrogram_image_export_path(self, channel: str, impairment: str, subject: int, device: str,
+                                            protocol: str, trial: str, s_time: float, e_time: float,
+                                            is_full_time: bool = False) -> str:
+        r"""
+        Tạo path cho image Spectrogram
+        :param channel: Tên kênh đo
+        :param impairment: Chuẩn đoán suy giảm thân kinh
+        :param subject: Tên người thự nghiệm
+        :param device: Thiết bị đo
+        :param protocol: Cổng kết nối thiết bị
+        :param trial: Các lần đo
+        :param s_time: Thời gian bắt đầu
+        :param e_time: Thời gian kết thúc
+        :param is_full_time: Hình ảnh thể hiện hết thời gian dữ liệu
+        :return: Path của image Spectrogram chuẩn bị export
+        """
+        return self.__get_image_export_path(
             folder_name=EEGImageType.Spectrogram.value,
             channel=channel,
             impairment=impairment,
@@ -197,14 +247,28 @@ class ColostateService:
             device=device,
             protocol=protocol,
             trial=trial,
+            is_full_time=is_full_time,
             s_time=s_time,
             e_time=e_time
         )
-    # end __time_series_image_export_path()
+    # end __get_time_series_image_export_path()
 
-    def __scalogram_image_export_path(self, channel: str, impairment: str, subject: int, device: str, protocol: str,
-                                      trial: str, s_time: float, e_time: float) -> str:
-        return self.__image_export_path(
+    def __get_scalogram_image_export_path(self, channel: str, impairment: str, subject: int, device: str, protocol: str,
+                                          trial: str, s_time: float, e_time: float, is_full_time: bool = False) -> str:
+        r"""
+        Tạo path cho image Scalogram
+        :param channel: Tên kênh đo
+        :param impairment: Chuẩn đoán suy giảm thân kinh
+        :param subject: Tên người thự nghiệm
+        :param device: Thiết bị đo
+        :param protocol: Cổng kết nối thiết bị
+        :param trial: Các lần đo
+        :param s_time: Thời gian bắt đầu
+        :param e_time: Thời gian kết thúc
+        :param is_full_time: Hình ảnh thể hiện hết thời gian dữ liệu
+        :return: Path của image Scalogram chuẩn bị export
+        """
+        return self.__get_image_export_path(
             folder_name=EEGImageType.Scalogram.value,
             channel=channel,
             impairment=impairment,
@@ -212,10 +276,12 @@ class ColostateService:
             device=device,
             protocol=protocol,
             trial=trial,
+            is_full_time=is_full_time,
             s_time=s_time,
             e_time=e_time
         )
-    # end __time_series_image_export_path()
+    # end __get_time_series_image_export_path()
+    # endregion
 
     # noinspection PyMethodMayBeStatic
     def __split_signal(self, signal: np.ndarray, sample_rate: int, segment_width: float = 3.84,
@@ -269,7 +335,7 @@ class ColostateService:
 
     # region Public
     # noinspection PyMethodMayBeStatic
-    def read_json(self, path: str) -> List[BrainComputerInterfaceModel]:
+    def read_json(self, path: str) -> List[BCIModel]:
         """
         Load the brain coumput interface for the json file
         :param path: The file path
@@ -295,7 +361,7 @@ class ColostateService:
                 eeg = self.__load_eeg(channels, sample_rate, eeg)
             # end if
 
-            bci_model = BrainComputerInterfaceModel()
+            bci_model = BCIModel()
             bci_model.protocol = protocol
             bci_model.sample_rate = sample_rate
             bci_model.notes = item.get('notes', '')
@@ -315,7 +381,7 @@ class ColostateService:
         return result
     # end read_jon()
 
-    def show_time_series(self, bci: List[BrainComputerInterfaceModel], bandpass: bool = False):
+    def show_time_series(self, bci: List[BCIModel], bandpass: bool = False):
         for item in bci[:1]:
             for eeg in item.eeg[:1]:
                 self.__eeg_service.show_time_series(eeg, bandpass)
@@ -323,8 +389,10 @@ class ColostateService:
         # end for
     # end show_time_series()
 
-    def export_time_series(self, bci: List[BrainComputerInterfaceModel], bandpass: bool = False,
-                           segment_width: float = 3.84, overlap: float = 0.2):
+    # region Export the image
+    # region Export the time-series image
+    def export_time_series(self, bci: List[BCIModel], bandpass: bool = False, segment_width: float = 3.84,
+                           overlap: float = 0.2):
         r"""
         Tạo ảnh Time Series
         :param bci:
@@ -344,7 +412,7 @@ class ColostateService:
                     try:
                         s_time = np.round(index * segment_width * (1 - overlap), decimals=2)
                         e_time = np.round(s_time + segment_width, decimals=2)
-                        path = self.__time_series_image_export_path(
+                        path = self.__get_time_series_image_export_path(
                             channel=eeg.channel,
                             impairment=item.impairment,
                             subject=item.subject,
@@ -354,10 +422,10 @@ class ColostateService:
                             s_time=s_time,
                             e_time=e_time
                         )
-                        data_export = EEGSignalModel(eeg.trial, eeg.channel, eeg.sample_rate, segment.tolist())
+                        data_export = EEGSignalModel(eeg.trial, eeg.channel, eeg.sample_rate, segment)
 
                         # Export the time series of the signal
-                        self.__eeg_service.export_time_series(path, data_export, bandpass)
+                        self.__eeg_service.export_time_series_image(path, data_export, bandpass)
                         index += 1
                     except Exception as ex:
                         self.__logger.error(ex)
@@ -368,8 +436,41 @@ class ColostateService:
         # end for
     # end export_time_series()
 
-    def export_spectrogram(self, bci: List[BrainComputerInterfaceModel], segment_width: float = 3.84,
-                           overlap: float = 0.2):
+    def export_full_time_series(self, bci: List[BCIModel], bandpass: bool = False):
+        r"""
+        Tạo ảnh Time Series full thời gian
+        :param bci:
+        :param bandpass:
+        :return:
+        """
+        for item in bci:
+            for eeg in item.eeg:
+                try:
+                    path = self.__get_time_series_image_export_path(
+                        channel=eeg.channel,
+                        impairment=item.impairment,
+                        subject=item.subject,
+                        device=item.device,
+                        protocol=item.protocol,
+                        trial=eeg.trial,
+                        s_time=0,
+                        e_time=len(eeg.signal),
+                        is_full_time=True
+                    )
+
+                    # Export the time series of the signal
+                    self.__eeg_service.export_time_series_image(path, eeg, bandpass, w=2581, h=1949)
+                except Exception as ex:
+                    self.__logger.error(ex)
+                    continue
+                # end try
+            # end for
+        # end for
+    # end export_full_time_series()
+    # endregion
+
+    # region Export the spectrogram image
+    def export_spectrogram(self, bci: List[BCIModel], segment_width: float = 3.84, overlap: float = 0.2):
         r"""
         Tạo ảnh Spectrogram
         :param bci:
@@ -388,7 +489,7 @@ class ColostateService:
                     try:
                         s_time = np.round(index * segment_width * (1 - overlap), decimals=2)
                         e_time = np.round(s_time + segment_width, decimals=2)
-                        path = self.__spectrogram_image_export_path(
+                        path = self.__get_spectrogram_image_export_path(
                             channel=eeg.channel,
                             impairment=item.impairment,
                             subject=item.subject,
@@ -398,10 +499,10 @@ class ColostateService:
                             s_time=s_time,
                             e_time=e_time
                         )
-                        data_export = EEGSignalModel(eeg.trial, eeg.channel, eeg.sample_rate, segment.tolist())
+                        data_export = EEGSignalModel(eeg.trial, eeg.channel, eeg.sample_rate, segment)
 
                         # Export the time series of the signal
-                        self.__eeg_service.export_spectrogram(path, data_export)
+                        self.__eeg_service.export_spectrogram_image(path, data_export)
                         index += 1
                     except Exception as ex:
                         self.__logger.error(ex)
@@ -412,8 +513,40 @@ class ColostateService:
         # end for
     # end export_spectrogram()
 
-    def export_scalogram(self, bci: List[BrainComputerInterfaceModel], segment_width: float = 3.84,
-                         overlap: float = 0.2):
+    def export_full_spectrogram(self, bci: List[BCIModel]):
+        r"""
+        Tạo ảnh Spectrogram full thời gian
+        :param bci:
+        :return:
+        """
+        for item in bci:
+            for eeg in item.eeg:
+                try:
+                    path = self.__get_spectrogram_image_export_path(
+                        channel=eeg.channel,
+                        impairment=item.impairment,
+                        subject=item.subject,
+                        device=item.device,
+                        protocol=item.protocol,
+                        trial=eeg.trial,
+                        s_time=0,
+                        e_time=len(eeg.signal),
+                        is_full_time=True
+                    )
+
+                    # Export the time series of the signal
+                    self.__eeg_service.export_spectrogram_image(path, eeg, w=2581, h=1949)
+                except Exception as ex:
+                    self.__logger.error(ex)
+                    continue
+                # end try
+            # end for
+        # end for
+    # end export_spectrogram()
+    # endregion
+
+    # region Export the scalogram image
+    def export_scalogram(self, bci: List[BCIModel], segment_width: float = 3.84, overlap: float = 0.2):
         r"""
         Tạo ảnh Scalogram
         :param bci:
@@ -432,19 +565,20 @@ class ColostateService:
                     try:
                         s_time = np.round(index * segment_width * (1 - overlap), decimals=2)
                         e_time = np.round(s_time + segment_width, decimals=2)
-                        path = self.__scalogram_image_export_path(
+                        path = self.__get_scalogram_image_export_path(
                             channel=eeg.channel,
                             impairment=item.impairment,
                             subject=item.subject,
+                            device=item.device,
                             protocol=item.protocol,
                             trial=eeg.trial,
                             s_time=s_time,
                             e_time=e_time
                         )
-                        data_export = EEGSignalModel(eeg.trial, eeg.channel, eeg.sample_rate, segment.tolist())
+                        data_export = EEGSignalModel(eeg.trial, eeg.channel, eeg.sample_rate, segment)
 
                         # Export the time series of the signal
-                        self.__eeg_service.export_scalogram(path, data_export)
+                        self.__eeg_service.export_scalogram_image(path, data_export)
                         index += 1
                     except Exception as ex:
                         self.__logger.error(ex)
@@ -455,9 +589,41 @@ class ColostateService:
         # end for
     # end export_scalogram()
 
+    def export_full_scalogram(self, bci: List[BCIModel]):
+        r"""
+        Tạo ảnh Scalogram full thời gian
+        :param bci:
+        :return:
+        """
+        for item in bci:
+            for eeg in item.eeg:
+                try:
+                    path = self.__get_scalogram_image_export_path(
+                        channel=eeg.channel,
+                        impairment=item.impairment,
+                        subject=item.subject,
+                        device=item.device,
+                        protocol=item.protocol,
+                        trial=eeg.trial,
+                        s_time=0,
+                        e_time=len(eeg.signal),
+                        is_full_time=True
+                    )
+
+                    # Export the time series of the signal
+                    self.__eeg_service.export_scalogram_image(path, eeg, w=2581, h=1949)
+                except Exception as ex:
+                    self.__logger.error(ex)
+                    continue
+                # end try
+            # end for
+        # end for
+    # end export_full_scalogram()
+    # endregion
+
     def export_image(self, data_folder: str, eeg_image_type: EEGImageType):
         r"""
-        Khởi tạo ra
+        Khởi tạo hình ảnh
         :param data_folder:
         :param eeg_image_type: (TimeSeries | Spectrogram| Scalogram | None)
         :return: Xuất ra các image (TimeSeries | Spectrogram| Scalogram | All)
@@ -470,25 +636,66 @@ class ColostateService:
         for (dir_path, dir_names, filenames) in walk(data_folder):
             for filename in filenames:
                 # region Đọc dữ liệu từ file
-                json_path = r'{0}\{1}'.format(dir_path, filename)
-                data: List[BrainComputerInterfaceModel] = self.read_json(json_path)
+                json_path = f'{dir_path}\\{filename}'
+                data: List[BCIModel] = self.read_json(json_path)
                 # endregion
 
                 # region Export Image
+                if eeg_image_type is None:
+                    self.export_time_series(bci=data, bandpass=True)
+                    self.export_spectrogram(bci=data)
+                    self.export_scalogram(bci=data)
+                # end if
+
                 if eeg_image_type == EEGImageType.TimeSeries:
                     self.export_time_series(bci=data, bandpass=True)
                 elif eeg_image_type == EEGImageType.Spectrogram:
                     self.export_spectrogram(bci=data)
                 elif eeg_image_type == EEGImageType.Scalogram:
                     self.export_scalogram(bci=data)
-                else:
-                    self.export_time_series(bci=data, bandpass=True)
-                    self.export_spectrogram(bci=data)
-                    self.export_scalogram(bci=data)
                 # end if
                 # endregion
             # end for
         # end for
     # end export_image
+
+    def export_full_time_image(self, data_folder: str, eeg_image_type: EEGImageType):
+        r"""
+        Khởi tạo hình ảnh full thời gian
+        :param data_folder:
+        :param eeg_image_type: (TimeSeries | Spectrogram| Scalogram | None)
+        :return: Xuất ra các image (TimeSeries | Spectrogram| Scalogram | All)
+        """
+        if not data_folder:
+            self.__logger.error('Thu muc dataset cua Colorado State University dang truyen vo rong')
+            return
+        # end if
+
+        for (dir_path, dir_names, filenames) in walk(data_folder):
+            for filename in filenames:
+                # region Đọc dữ liệu từ file
+                json_path = f'{dir_path}\\{filename}'
+                data: List[BCIModel] = self.read_json(json_path)
+                # endregion
+
+                # region Export Image
+                if eeg_image_type is None:
+                    self.export_full_time_series(bci=data, bandpass=True)
+                    self.export_full_spectrogram(bci=data)
+                    self.export_full_scalogram(bci=data)
+                # end if
+
+                if eeg_image_type == EEGImageType.TimeSeries:
+                    self.export_full_time_series(bci=data, bandpass=True)
+                elif eeg_image_type == EEGImageType.Spectrogram:
+                    self.export_full_spectrogram(bci=data)
+                elif eeg_image_type == EEGImageType.Scalogram:
+                    self.export_full_scalogram(bci=data)
+                # end if
+                # endregion
+            # end for
+        # end for
+    # end export_image
+    # endregion
     # endregion
 # end ColostateService

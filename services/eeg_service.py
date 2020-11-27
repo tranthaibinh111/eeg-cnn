@@ -30,15 +30,15 @@ class EEGService:
 
     # region Private
     # noinspection PyMethodMayBeStatic
-    def __butter_bandpass(self, lowcut: float, highcut: float, fs: float,
+    def __butter_bandpass(self, low_cut: float, high_cut: float, fs: float,
                           order: int = 3) -> Tuple[np.ndarray, np.ndarray]:
         r"""
         Butterworth digital and analog filter design.
 
         Design an Nth-order digital or analog Butterworth filter and return
         the filter coefficients.
-        :param lowcut: The frequency min
-        :param highcut: The frequency max
+        :param low_cut: The frequency min
+        :param high_cut: The frequency max
         :param fs: The sample rate
         :param order: The order of the filter
         :return:
@@ -47,8 +47,8 @@ class EEGService:
             Only returned if ``output='ba'``.
         """
         nyq = 0.5 * fs
-        low = lowcut / nyq
-        high = highcut / nyq
+        low = low_cut / nyq
+        high = high_cut / nyq
         b, a = butter(N=order, Wn=[low, high], btype='band')
 
         return b, a
@@ -149,8 +149,8 @@ class EEGService:
         plt.show()
     # end show_time_series()
 
-    def export_time_series(self, path: str, eeg_signal: EEGSignalModel, bandpass: bool = False, w: int = 496,
-                           h: int = 496, dpi: int = 300):
+    def export_time_series_image(self, path: str, eeg_signal: EEGSignalModel, bandpass: bool = False, w: int = 496,
+                                 h: int = 496, dpi: int = 300):
         r"""
         Export the time series image of the signal
         :param path: The path to save the file
@@ -176,9 +176,10 @@ class EEGService:
         finally:
             self.__logger.debug('Kết thúc quá trình khởi tạo hình ảnh Time Series {0}'.format(path))
         # end try
-    # end export_time_series()
+    # end export_time_series_image()
 
-    def export_spectrogram(self, path: str, eeg_signal: EEGSignalModel, w: int = 496, h: int = 496, dpi: int = 300):
+    def export_spectrogram_image(self, path: str, eeg_signal: EEGSignalModel, w: int = 496, h: int = 496,
+                                 dpi: int = 300):
         r"""
         Export the spectrogram image of the signal
         :param path: The path to save the file
@@ -195,7 +196,8 @@ class EEGService:
             # Plot
             figure = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
             plt.axis('off')
-            plt.pcolormesh(t, f, power.tolist(), cmap='viridis', vmin=np.amin(power), vmax=np.amax(power))
+            plt.pcolormesh(t.tolist(), f.tolist(), power.tolist(), cmap='viridis', vmin=np.amin(power),
+                           vmax=np.amax(power), shading='flat')
             plt.savefig(fname=path, dpi=dpi, bbox_inches='tight', pad_inches=0)
             plt.close(figure)
         except Exception as ex:
@@ -203,9 +205,9 @@ class EEGService:
         finally:
             self.__logger.debug('Kết thúc quá trình khởi tạo hình ảnh Spectrogram {0}'.format(path))
         # end try
-    # end export_time_series()
+    # end export_spectrogram_image()
 
-    def export_scalogram(self, path: str, eeg_signal: EEGSignalModel, w: int = 496, h: int = 496, dpi: int = 300):
+    def export_scalogram_image(self, path: str, eeg_signal: EEGSignalModel, w: int = 496, h: int = 496, dpi: int = 300):
         r"""
         Export the scalogram image of the signal
         :param path: The path to save the file
@@ -229,7 +231,7 @@ class EEGService:
             self.__logger.error(ex)
         finally:
             self.__logger.debug('Kết thúc quá trình khởi tạo hình ảnh Scalogram {0}'.format(path))
-    # end export_time_series()
+    # end export_scalogram_image()
     # endregion
     # endregion
 # end EEGService

@@ -29,18 +29,18 @@ class Setting:
 
     @property
     def logger_yaml(self) -> str:
-        return r'{0}\config\logger.yaml'.format(self.__base_dir)
+        return f'{self.__base_dir}\\config\\logger.yaml'
     # end logger_yaml()
 
     @property
-    def colostate_dataset(self) -> str:
-        return r'{0}\dataset\colostate'.format(self.__base_dir)
-    # end colostate_dataset()
+    def dataset_folder(self, dataset_type: str = 'colostate') -> str:
+        return f'{self.__base_dir}\\dataset\\{dataset_type}'
+    # end dataset_folder()
 
     @property
-    def colostate_image_export(self) -> str:
+    def image_export_folder(self) -> str:
         # region Kiểm tra và khởi tạo thư mục export
-        folder = r'{0}\exports'.format(self.__base_dir)
+        folder = f'{self.__base_dir}\\exports'
 
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -48,7 +48,7 @@ class Setting:
         # endregion
 
         # region Kiểm tra và khởi tạo thưc mục hình ảnh export
-        folder = r'{0}\images'.format(folder)
+        folder = f'{folder}\\images'
 
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -56,12 +56,12 @@ class Setting:
         # endregion
 
         return folder
-    # end colostate_image_export()
+    # end image_export_folder()
 
     @property
     def h5_export(self) -> str:
         # region Kiểm tra và khởi tạo thư mục export
-        folder = r'{0}\exports'.format(self.__base_dir)
+        folder = f'{self.__base_dir}\\exports'
 
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -69,7 +69,7 @@ class Setting:
         # endregion
 
         # region Kiểm tra và khởi tạo thưc mục H5 export
-        folder = r'{0}\h5'.format(folder)
+        folder = f'{folder}\\h5'
 
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -80,9 +80,9 @@ class Setting:
     # end h5_export
 
     @property
-    def evaluate_export(self) -> str:
+    def evaluate_export_folder(self) -> str:
         # region Kiểm tra và khởi tạo thư mục export
-        folder = r'{0}\evaluate'.format(self.__base_dir)
+        folder = f'{self.__base_dir}\\evaluate'
 
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -93,9 +93,9 @@ class Setting:
     # end
 
     @property
-    def test_data_folder(self) -> str:
+    def validation_data_folder(self) -> str:
         # region Kiểm tra và khởi tạo thư test data
-        folder = r'{0}\test-data'.format(self.evaluate_export)
+        folder = f'{self.evaluate_export_folder}\\validation-data'
 
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -103,5 +103,5 @@ class Setting:
         # endregion
 
         return folder
-    # end
+    # end validation_data_folder
 # end Setting

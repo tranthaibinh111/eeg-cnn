@@ -136,7 +136,7 @@ class CNNService:
     # region Evaluate model
     def evaluate_path(self, evaluate_folder: str, evaluate_name: str) -> str:
         # region Kiểm tra và khởi tạo thư mục export
-        folder = r'{0}\{1}'.format(self.setting.evaluate_export, evaluate_folder)
+        folder = r'{0}\{1}'.format(self.setting.evaluate_export_folder, evaluate_folder)
 
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -213,10 +213,10 @@ class CNNService:
         precision, recall, f1, _ = precision_recall_fscore_support(y_true=val_labels, y_pred=pred_labels,
                                                                    average='weighted', zero_division=0)
 
-        self.logger.debug("Sensitivity: {:.2f}".format(recall * 100.0))
-        self.logger.debug("Accuracy: {:.2f}".format(accuracy * 100.0))
-        self.logger.debug("F1: {:.2f}".format(f1 * 100.0))
-        self.logger.debug("Precision: {:.2f}".format(precision * 100.0))
+        self.logger.debug("Sensitivity: {:.2f}%".format(recall * 100.0))
+        self.logger.debug("Accuracy: {:.2f}%".format(accuracy * 100.0))
+        self.logger.debug("F1: {:.2f}%".format(f1 * 100.0))
+        self.logger.debug("Precision: {:.2f}%".format(precision * 100.0))
 
         # Show confusion matrix
         confmat = self.show_confusion_matrix(labels, val_labels, pred_labels, evaluate_path, show_evaluate)
