@@ -1,9 +1,9 @@
 # region python
-import os
 import pathlib
-import shutil
+import re
 
 from datetime import datetime
+from typing import List, Tuple
 # endregion
 
 # region package (third-party)
@@ -13,6 +13,8 @@ import numpy as np
 
 # region tensorFlow
 import tensorflow as tf
+
+from tensorflow import data
 # endregion
 
 # region PIL
@@ -20,7 +22,8 @@ from PIL import Image
 # endregion
 
 # region sklearn
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, f1_score
+from sklearn.model_selection import LeaveOneOut
 # endregion
 
 # region Matplotlib
@@ -35,9 +38,10 @@ from config import Setting
 # utils
 from utlis import Logger
 # enum
-from models import EEGChannel, Subject, ImpairmentType, EEGImageType, AIModelType
+from enumerates import EEGChannel, Subject, ImpairmentType, EEGImageType, AIModelType
 # services
-from services import IocContainer, ColostateService, SimpleCNNService, AlexNetService, LeNetService
+from services import IocContainer, ColostateService, SimpleCNNService, AlexNetService, LeNetService, CNNService, \
+    GregaVrbancicService
 # endregion
 
 
@@ -89,18 +93,21 @@ def export(logger: Logger, setting: Setting, colostate_service: ColostateService
 # end image_export()
 
 
-def load_dataset(logger: Logger, data_folder: str, cnn_service):
+def load_dataset(logger: Logger, training_folder: str, validation_folder: str, cnn_service) \
+        -> Tuple[data.Dataset, data.Dataset, List[str]]:
     r"""
     Khởi tạo dữ liệu train (80%) / test (20%)
     :param logger: ghi log.
-    :param data_folder: thư mục dataset
+    :param training_folder: thư mục data training
+    :param validation_folder: thư mục data validation
     :param cnn_service:
     :return:
     """
     try:
         # region Tạo dữ liệu train / test
         train_ds, val_ds = cnn_service.load_data(
-            path=data_folder,
+            training_folder=training_folder,
+            validation_folder=validation_folder,
             img_height=cnn_service.img_height,
             img_width=cnn_service.img_width,
             batch_size=cnn_service.batch_size
@@ -148,124 +155,53 @@ def build_ai_model(logger: Logger, cnn_service, train_ds, val_ds, n_labels, n_ep
 # end build_model
 
 
-def evaluate_ai_model(logger: Logger, setting: Setting, eeg_image_type: EEGImageType, ai_model_type: AIModelType,
+def evaluate_ai_model(logger: Logger, setting: Setting, eeg_image_type: EEGImageType, service: CNNService,
                       str_now: str):
     r"""
     Thực hiện đánh giá model training
     :param logger:
     :param setting:
     :param eeg_image_type: Loại hình ảnh đang được đánh giá
-    :param ai_model_type:
+    :param service:
     :param str_now: Thời gian mà model được khởi tạo - %Y%m%d%H%M%S
     :return:
     """
     try:
-        # region Data test
-        str_eeg_image_type = eeg_image_type.value
-        logger.debug('Bat dau khoi tao data test')
-
-        # region Lấy thông tin thư mục data và remove thư mục test data
-        data_folder = r'{0}/{1}'.format(setting.image_export_folder, str_eeg_image_type)
-        test_folder = r'{0}/{1}'.format(setting.validation_data_folder, str_eeg_image_type)
-
-        # Kiểm tra nếu chưa tồn tại thư mục test data
-        # Trường đã tồn tại thì xóa tất cả hình ảnh test
-        if not os.path.exists(test_folder):
-            logger.debug('Khoi tao thu muc {0}"'.format(test_folder))
-            os.makedirs(test_folder)
-        else:
-            logger.debug('Remove tat ca file trong thu muc "{0}"'.format(test_folder))
-            shutil.rmtree(test_folder)
-        # end if
-        # endregion
-
-        for channel in EEGChannel:
-            logger.debug('Bat dau khoi tao data test voi channel "{0}"'.format(channel.value))
-            # region Lấy thông tên channel và khởi tạo thư mục test channel
-            str_channel = channel.value
-            channel_path = r'{0}/{1}'.format(data_folder, str_channel)
-            test_channel_path = r'{0}/{1}'.format(test_folder, str_channel)
-
-            if not os.path.exists(test_channel_path):
-                logger.debug('Khoi tao thu muc "{0}"'.format(test_channel_path))
-                os.makedirs(test_channel_path)
-            # end if
-            # endregion
-
-            for subject in Subject:
-                # region Khởi tạo thư mục subject test
-                str_subject = subject.value
-                test_subject_folder = r'{0}/{1}'.format(test_channel_path, str_subject)
-
-                if not os.path.exists(test_subject_folder):
-                    message = 'Khoi tao thu muc "{0}"'.format(test_subject_folder)
-                    logger.debug(message)
-                    os.makedirs(test_subject_folder)
-                # end if
-                # endregion
-
-                # region Lấy các hình ảnh cho test
-                data_dir = pathlib.Path(channel_path)
-                image_filter = r'*/{0}_*.png'.format(str_subject)
-                image_paths = list(data_dir.glob(image_filter))
-                n_samples = int(np.ceil(len(image_paths) * 10e-2))
-                index_random = np.random.randint(len(image_paths), size=n_samples)
-                # endregion
-
-                # region Khởi tạo dữ liệu test
-                logger.debug('Bat dau khoi tao data test "{0}" của {1}'.format(str_channel, str_subject))
-                for index in index_random:
-                    file_path = image_paths[index]
-
-                    if file_path:
-                        logger.debug('Copy file {0} -> {1}'.format(file_path, test_subject_folder))
-                        shutil.copy(file_path, test_subject_folder)
-                # end for
-                logger.debug('Ket thuc khoi tao data test "{0}" của {1}'.format(str_channel, str_subject))
-                # endregion
-            # end for
-
-            logger.debug('Ket thuc khoi tao data test voi channel "{0}"'.format(channel.value))
-        # end for
-
-        logger.debug('Ket thuc khoi tao data test')
-        # endregion
-
         # region Đánh gia model AI
-        str_ai_model_type = ai_model_type.value
+        str_eeg_image_type = eeg_image_type.value
+        test_folder = f'{setting.testing_folder}\\{str_eeg_image_type}'
+        model_folder = f'{setting.h5_export}\\{service.model_folder}'
+
         evaluation_matrix = np.zeros(shape=(13, 9), dtype=np.bool)
         col_index = 0
 
-        # for channel in EEGChannel:
-        for channel in [EEGChannel.P3, EEGChannel.P4]:
+        for channel in EEGChannel:
             str_channel = channel.value
-            logger.debug('Bat dau danh gia tren channel {0}'.format(str_channel))
-            model_path = r'{0}\{1}\{2}_{3}_model_{4}.h5'.format(setting.h5_export, str_ai_model_type,
-                                                                str_eeg_image_type, str_channel, str_now)
+            logger.debug(f'Bat dau danh gia tren channel {str_channel}')
+            model_path = f'{model_folder}\\{str_eeg_image_type}_{str_channel}_model_{str_now}.h5'
             cnn_model = tf.keras.models.load_model(model_path)
             row_index = 0
 
             for subject in Subject:
                 str_subject = subject.value
-                logger.debug('Bat dau nhan dang benh cho {0} dua tren channel {1}'.format(str_subject, str_channel))
-                sub_folder = r'{0}/{1}/{2}'.format(test_folder, str_channel, str_subject)
+                logger.debug(f'Bat dau nhan dang benh cho {str_subject} dua tren channel {str_channel}')
+                sub_folder = f'{test_folder}\\{str_channel}\\{str_subject}'
                 sub_dir = pathlib.Path(sub_folder)
                 votes = np.array(list(), dtype=np.bool)
 
                 for image_file in list(sub_dir.glob('*.png')):
                     logger.debug('Hinh anh: {0}'.format(str(image_file)))
-                    # region Lấy matrix data image
+                    # region Lấy data image
                     image = Image.open(str(image_file))
                     image = image.convert('RGB')
-                    # image = image.resize(size=(270, 202))
-                    image = image.resize(size=(227, 227))
-                    data = np.array(image, dtype=float) / 255.
+                    image = image.resize(size=(service.img_width, service.img_height))
+                    image_data = np.array(image, dtype=float) / 255.
                     # Thêm thông sô batch (1, 270, 2002, 3)
-                    data = np.expand_dims(data, axis=0)
+                    image_data = np.expand_dims(image_data, axis=0)
                     # endregion
 
                     # region Thực hiện dự đoán
-                    prediction = cnn_model.predict_classes(data, batch_size=1)
+                    prediction = cnn_model.predict_classes(image_data, batch_size=1)
 
                     if prediction[0]:
                         logger.debug('Index classifications: {0}'.format(prediction[0]))
@@ -315,10 +251,8 @@ def evaluate_ai_model(logger: Logger, setting: Setting, eeg_image_type: EEGImage
         specificity = tn / (tn + fp)
         logger.debug("Specificity: {:.2f}%".format(specificity * 100.0))
 
-        precision = tp / (tp + fp)
-        logger.debug("Precision: {:.2f}%".format(precision * 100.0))
-
-        f1 = 2 * tp / (2 * tp + fp + fn)
+        # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.f1_score.html
+        f1 = f1_score(y_true, y_pred, average='weighted')
         logger.debug("F1: {:.2f}%".format(f1 * 100.0))
         # endregion
         # endregion
@@ -354,6 +288,7 @@ def evaluate_ai_model(logger: Logger, setting: Setting, eeg_image_type: EEGImage
         fig.tight_layout()
         plt.show()
         # endregion
+        # endregion
     except Exception as ex:
         logger.error(ex)
     # end try
@@ -363,14 +298,16 @@ def evaluate_ai_model(logger: Logger, setting: Setting, eeg_image_type: EEGImage
 def main():
     # region Cấu hình chương trình
     # str_now: str = datetime.now().strftime('%Y%m%d%H%M%S')
-    str_now: str = '20201029204516'
-    eeg_image_type = None
-    execute_export = True
-    is_full_time = True
-    ai_model_type = AIModelType.AlexNet
-    execute_build_ai_model = False
+    str_now: str = '20201130234042'
+    eeg_image_type = EEGImageType.Scalogram
+    execute_export = False
+    is_full_time = False
+    ai_model_type = AIModelType.LeNet
+    execute_build_ai_model = True
     n_epochs = 50
-    execute_evaluate = False
+    execute_evaluate = True
+
+    execute_grega_vrbancic = False
     # endregion
 
     # region Khai báo service
@@ -384,6 +321,8 @@ def main():
     simple_cnn_service: SimpleCNNService = container.simple_cnn_service()
     alexnet_service: AlexNetService = container.alexnet_service()
     lenet_service: LeNetService = container.lenet_service()
+
+    grega_vrbancic_service: GregaVrbancicService = container.grega_vrbancic_service()
     # endregion
 
     # region Export Image (Time Series | Spectrogram | Scalogram)
@@ -392,24 +331,196 @@ def main():
     # end if
     # endregion
 
-    # region Build model AI và đánh giá
-    if execute_build_ai_model:
-        # region Khởi tạo service CNN
-        if ai_model_type == AIModelType.SimpleCNN:
-            cnn_service = simple_cnn_service
-        elif ai_model_type == AIModelType.LeNet:
-            cnn_service = lenet_service
-        else:
-            cnn_service = alexnet_service
-        # end if
+    if execute_grega_vrbancic:
+        str_eeg_image_type: str = str(eeg_image_type.value)
+        data_folder: str = f'{setting.image_export_folder}\\full-time\\{str_eeg_image_type}'
+
+        # # region Training và validation LeNet
+        # for channel in [EEGChannel.P3, EEGChannel.P4]:
+        #     # region Lấy thông tin hình ảnh của channel
+        #     str_channel: str = str(channel.value).upper()
+        #     data_dir = pathlib.Path(f'{data_folder}\\{str_channel}')
+        #     paths = list(data_dir.glob('*/*.png'))
+        #     # endregion
+        #
+        #     # Tạo model LeNet
+        #     class_names = [ImpairmentType.MS, ImpairmentType.Normal, ImpairmentType.Spinal]
+        #     lenet_model = grega_vrbancic_service.build_model(len(class_names))
+        #
+        #     # region Thực hiện Leave-one-out
+        #     loo = LeaveOneOut()
+        #
+        #     for train_index, test_index in loo.split(paths):
+        #         # Load data
+        #         training_x, training_y, validation_x, validation_y = grega_vrbancic_service.load_data(
+        #             f'{data_folder}\\{str_channel}',
+        #             train_index
+        #         )
+        #         # Compile and fit model
+        #         grega_vrbancic_service.model_name = f'{str_eeg_image_type}_{str_channel}_model_{str_now}.h5'
+        #         lenet_model = grega_vrbancic_service.compile_and_fit_model(lenet_model, training_x, training_y,
+        #                                                                    validation_x, validation_y)
+        #     # end for
+        #     # endregion
+        # # end for
+        # # endregion
+
+        # region Đánh giá mode LeNet
+        img_width = grega_vrbancic_service.img_width
+        img_height = grega_vrbancic_service.img_height
+        test_folder = data_folder
+        evaluation_matrix = np.zeros(shape=(13, 9), dtype=np.bool)
+        col_index = 0
+
+        # region Thực hiện đánh giá và lưu vào bẳng ma trận
+        for channel in EEGChannel:
+            # region Lấy thông tin hình ảnh của channel
+            str_channel: str = str(channel.value).upper()
+            data_dir = pathlib.Path(f'{test_folder}\\{str_channel}')
+            paths = list(data_dir.glob('*/*.png'))
+            # endregion
+
+            # region Load model của channel
+            lenet_model_name: str = f'{str_eeg_image_type}_{str_channel}_model_{str_now}.h5'
+            lenet_model_path: str = f'{setting.h5_export}\\{grega_vrbancic_service.model_folder}\\{lenet_model_name}'
+            lenet_model = tf.keras.models.load_model(lenet_model_path)
+            # endregion
+
+            for index in range(len(paths)):
+                # region Load data image
+                image_path = paths[index]
+                image_pil = Image.open(image_path)
+                image_pil = image_pil.convert(mode='RGB')
+                image_pil = image_pil.resize((img_width, img_height))
+                x = np.array(image_pil)
+                # endregion
+
+                # standardize
+                x = x / 255.
+                # Thêm thông sô batch (1, 270, 2002, 3)
+                x = np.expand_dims(x, axis=0)
+
+                # region Lấy thông tin class name
+                subject_name = re.findall(r'^(\w\d\d)_.*\.png$', image_path.name)[0]
+                impaired_ms = [Subject.S13.value, Subject.S15.value, Subject.S16.value]
+                impaired_spinal = [Subject.S11.value]
+
+                if subject_name in impaired_ms:
+                    y_true = ImpairmentType.MS
+                elif subject_name in impaired_spinal:
+                    y_true = ImpairmentType.Spinal
+                else:
+                    y_true = ImpairmentType.Normal
+                # end if
+                # endregion
+
+                # Thực hiện dự đoán
+                prediction = lenet_model.predict_classes(x, batch_size=1)[0]
+
+                logger.debug(f'Image: {image_path.name}')
+                logger.debug(f'Prediction: {prediction}')
+
+                # region Cập nhât kêt quả dự đoán vào bảng đánh giá
+                row_index = 0
+
+                for subject in Subject:
+                    if subject_name == subject.value:
+                        break
+                    # end if
+
+                    row_index = row_index + 1
+                # end for
+
+                evaluation_matrix[row_index, col_index] = y_true == prediction
+                # endregion
+            # end for
+
+            col_index = col_index + 1
+        # end for
         # endregion
 
+        # region Tính toán accuracy, sensitivity, specificity, f1 từ ma trận
+        logger.debug(str(evaluation_matrix))
+        for row in evaluation_matrix:
+            row[-1] = np.sum(row[:7]) >= len(row) / 2
+        # end for
+
+        # region Ghi kết quả đánh giá model AI
+        y_true = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1], dtype=np.int)
+        y_pred = np.array([row[-1] for row in evaluation_matrix], dtype=np.int)
+        tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+
+        accuracy = (tp + tn) / (tp + tn + fp + fn)
+        logger.debug("Accuracy: {:.2f}%".format(accuracy * 100.0))
+
+        sensitivity = tp / (tp + fn)
+        logger.debug("Sensitivity: {:.2f}%".format(sensitivity * 100.0))
+
+        specificity = tn / (tn + fp)
+        logger.debug("Specificity: {:.2f}%".format(specificity * 100.0))
+
+        f1 = f1_score(y_true, y_pred, average='weighted')
+        logger.debug("F1: {:.2f}%".format(f1 * 100.0))
+        # endregion
+        # endregion
+
+        # region Show Table plot
+        y_labels = [item.value for item in Subject]
+        x_labels = [item.value for item in EEGChannel]
+        x_labels.append('class')
+
+        fig, ax = plt.subplots(figsize=(8, 4))
+
+        # hide axes
+        ax.axis('off')
+        ax.axis('tight')
+
+        # Get some lists of color specs for row and column headers
+        r_colors = cm.BuPu(np.full(len(y_labels), 0.1))
+        c_colors = cm.BuPu(np.full(len(x_labels), 0.1))
+
+        plt.table(
+            cellText=evaluation_matrix,
+            cellLoc='center',
+            rowLabels=y_labels,
+            rowColours=r_colors,
+            rowLoc='center',
+            colLabels=x_labels,
+            colColours=c_colors,
+            colLoc='center',
+            loc='center left'
+        )
+
+        fig.patch.set_visible(False)
+        fig.tight_layout()
+        plt.show()
+        # endregion
+        # endregion
+    # end if
+
+    if not execute_build_ai_model and not execute_evaluate:
+        return
+    # end if
+
+    # region Khởi tạo service CNN
+    if ai_model_type == AIModelType.SimpleCNN:
+        cnn_service = simple_cnn_service
+    elif ai_model_type == AIModelType.LeNet:
+        cnn_service = lenet_service
+    else:
+        cnn_service = alexnet_service
+    # end if
+    # endregion
+
+    # region Build model AI và đánh giá
+    if execute_build_ai_model:
         for channel in [EEGChannel.P3, EEGChannel.P4]:
             # region Load dataset
             str_eeg_image_type: str = str(eeg_image_type.value)
             str_channel: str = str(channel.value).upper()
-            data_folder: str = r'{0}\{1}\{2}'.format(setting.image_export_folder, str_eeg_image_type, str_channel)
-            train_ds, val_ds, labels = load_dataset(logger, data_folder, cnn_service)
+            training_folder: str = f'{setting.training_folder}\\{str_eeg_image_type}\\{str_channel}'
+            validation_folder: str = f'{setting.validation_folder}\\{str_eeg_image_type}\\{str_channel}'
+            train_ds, val_ds, labels = load_dataset(logger, training_folder, validation_folder, cnn_service)
             # endregion
 
             # region Xây dựng model CNN
@@ -428,7 +539,7 @@ def main():
 
     # region Thực hiện đánh giá theo bài báo
     if execute_evaluate:
-        evaluate_ai_model(logger, setting, eeg_image_type, ai_model_type, str_now)
+        evaluate_ai_model(logger, setting, eeg_image_type, cnn_service, str_now)
     # end if
     # endregion
 # end main()

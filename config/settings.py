@@ -59,6 +59,52 @@ class Setting:
     # end image_export_folder()
 
     @property
+    def training_folder(self) -> str:
+        folder = self.image_export_folder
+
+        # region Kiểm tra và khởi tạo thưc mục training
+        folder = f'{folder}\\training'
+
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        # end if
+        # endregion
+
+        return folder
+    # end training_folder()
+
+    @property
+    def validation_folder(self) -> str:
+        folder = self.image_export_folder
+
+        # region Kiểm tra và khởi tạo thưc mục training
+        folder = f'{folder}\\validation'
+
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        # end if
+        # endregion
+
+        return folder
+    # end validation_folder()
+
+    @property
+    def testing_folder(self) -> str:
+        folder = self.image_export_folder
+
+        # region Kiểm tra và khởi tạo thưc mục training
+        folder = f'{folder}\\testing'
+
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        # end if
+        # endregion
+
+        return folder
+
+    # end testing_folder()
+
+    @property
     def h5_export(self) -> str:
         # region Kiểm tra và khởi tạo thư mục export
         folder = f'{self.__base_dir}\\exports'
@@ -91,17 +137,4 @@ class Setting:
 
         return folder
     # end
-
-    @property
-    def validation_data_folder(self) -> str:
-        # region Kiểm tra và khởi tạo thư test data
-        folder = f'{self.evaluate_export_folder}\\validation-data'
-
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-        # end if
-        # endregion
-
-        return folder
-    # end validation_data_folder
 # end Setting

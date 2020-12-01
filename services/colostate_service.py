@@ -1,5 +1,7 @@
 # region python
 import os
+import pathlib
+import shutil
 
 from os import walk
 from typing import List
@@ -16,7 +18,7 @@ from config import Setting
 # utils
 from utlis import Logger
 # enum
-from models import EEGImageType
+from enumerates import EEGImageType, EEGChannel, ImpairmentType, Subject
 # models
 from models import BrainComputerInterfaceModel as BCIModel, EEGSignalModel
 # service
@@ -29,6 +31,7 @@ class ColostateService:
     __setting: Setting
     __logger: Logger
     __eeg_service: EEGService
+    __target_protocol: str
     __target_channels: List[str]
     # endregion
 
@@ -36,6 +39,7 @@ class ColostateService:
         self.__setting = setting
         self.__logger = logger
         self.__eeg_service = eeg_service
+        self.__target_protocol = '3minutes'
         self.__target_channels = ['C3', 'C4', 'F3', 'F4', 'O1', 'O2', 'P3', 'P4']
     # end __init__()
 
@@ -331,6 +335,191 @@ class ColostateService:
 
         return segments
     # end __split_signal()
+
+    def __validation_split(self, eeg_image_type: EEGImageType, validation_rate: float = 0.2):
+        r"""
+        Tạo dữ liệu training và dữ liệu validation
+        :param eeg_image_type:
+        :param validation_rate: Tỉ lệ data validation
+        :return:
+        """
+        self.__logger.debug('Bat dau khoi tao data training, validation')
+        str_eeg_image_type = eeg_image_type.value
+        data_folder = f'{self.__setting.image_export_folder}\\{str_eeg_image_type}'
+
+        # region Lấy thông tin thư mục training
+        training_folder = f'{self.__setting.training_folder}\\{str_eeg_image_type}'
+
+        if not os.path.exists(training_folder):
+            self.__logger.debug('Khoi tao thu muc {0}"'.format(training_folder))
+            os.makedirs(training_folder)
+        else:
+            self.__logger.debug('Remove tat ca file trong thu muc "{0}"'.format(training_folder))
+            shutil.rmtree(training_folder)
+        # end if
+        # endregion
+
+        # region Lấy thông tin thư mục validation
+        validation_folder = f'{self.__setting.validation_folder}\\{str_eeg_image_type}'
+
+        if not os.path.exists(validation_folder):
+            self.__logger.debug('Khoi tao thu muc {0}"'.format(validation_folder))
+            os.makedirs(validation_folder)
+        else:
+            self.__logger.debug('Remove tat ca file trong thu muc "{0}"'.format(validation_folder))
+            shutil.rmtree(validation_folder)
+        # end if
+        # endregion
+
+        for channel in EEGChannel:
+            self.__logger.debug(f'Bat dau khoi tao data data training va validation voi channel "{channel.value}"')
+            str_channel = channel.value
+            channel_folder = f'{data_folder}\\{str_channel}'
+            channel_dir = pathlib.Path(channel_folder)
+
+            # region Khởi tạo thư mục training cho channel
+            training_channel_path = f'{training_folder}\\{str_channel}'
+
+            if not os.path.exists(training_channel_path):
+                self.__logger.debug(f'Khoi tao thu muc "{training_channel_path}"')
+                os.makedirs(training_channel_path)
+            # end if
+            # endregion
+
+            # region Khởi tạo thư mục validation cho channel
+            validation_channel_path = f'{validation_folder}\\{str_channel}'
+
+            if not os.path.exists(validation_channel_path):
+                self.__logger.debug(f'Khoi tao thu muc "{validation_channel_path}"')
+                os.makedirs(validation_channel_path)
+            # end if
+            # endregion
+
+            for diagnostic in ImpairmentType:
+                str_diagnostic = str(diagnostic.name).lower()
+                self.__logger.debug(f'Bat dau khoi tao data training va validation {str_diagnostic}')
+
+                # region Khởi tạo thư mục training cho diagnostic
+                training_diagnostic_path = f'{training_channel_path}\\{str_diagnostic}'
+
+                if not os.path.exists(training_diagnostic_path):
+                    self.__logger.debug(f'Khoi tao thu muc "{training_diagnostic_path}"')
+                    os.makedirs(training_diagnostic_path)
+                # end if
+                # endregion
+
+                # region Khởi tạo thư mục validation cho diagnostic
+                validation_diagnostic_path = f'{validation_channel_path}\\{str_diagnostic}'
+
+                if not os.path.exists(validation_diagnostic_path):
+                    self.__logger.debug(f'Khoi tao thu muc "{validation_diagnostic_path}"')
+                    os.makedirs(validation_diagnostic_path)
+                # end if
+                # endregion
+
+                # region Lấy các hình ảnh cho testing
+                image_paths = list(channel_dir.glob(f'{str_diagnostic}\\*.png'))
+                n_images = len(image_paths)
+                n_validation = int(np.ceil(n_images * validation_rate))
+                index_random = np.random.randint(n_images, size=n_validation)
+                # endregion
+
+                # region Khởi tạo dữ liệu test
+                for index in range(n_images):
+                    image_path = image_paths[index]
+
+                    if image_path:
+                        if index in index_random:
+                            self.__logger.debug(f'Copy file {image_path} -> {validation_diagnostic_path}')
+                            shutil.copy(image_path, validation_diagnostic_path)
+                        else:
+                            self.__logger.debug(f'Copy file {image_path} -> {training_diagnostic_path}')
+                            shutil.copy(image_path, training_diagnostic_path)
+                        # end if
+                    # end if
+                # end for
+                # endregion
+                self.__logger.debug(f'Ket thuc khoi tao data training va validation {str_diagnostic}')
+            # end for
+            self.__logger.debug(f'Ket thuc khoi tao data training, validation voi channel "{channel.value}"')
+        # end for
+
+        self.__logger.debug('Ket thuc khoi tao data training, validation')
+    # end validation_split()
+
+    def __testing_split(self, eeg_image_type: EEGImageType, testing_rate: float = 0.2):
+        r"""
+        Tạo dữ liệu testing
+        :param eeg_image_type:
+        :param testing_rate: Tỉ lệ data testing
+        :return:
+        """
+        self.__logger.debug('Bat dau khoi tao data testing')
+        str_eeg_image_type = eeg_image_type.value
+        data_folder = f'{self.__setting.image_export_folder}\\{str_eeg_image_type}'
+
+        # region Lấy thông tin thư mục testing
+        testing_folder = f'{self.__setting.testing_folder}\\{str_eeg_image_type}'
+
+        if not os.path.exists(testing_folder):
+            self.__logger.debug('Khoi tao thu muc {0}"'.format(testing_folder))
+            os.makedirs(testing_folder)
+        else:
+            self.__logger.debug('Remove tat ca file trong thu muc "{0}"'.format(testing_folder))
+            shutil.rmtree(testing_folder)
+        # end if
+        # endregion
+
+        for channel in EEGChannel:
+            self.__logger.debug(f'Bat dau khoi tao data test voi channel "{channel.value}"')
+            str_channel = channel.value
+            channel_folder = f'{data_folder}\\{str_channel}'
+            channel_dir = pathlib.Path(channel_folder)
+
+            testing_channel_path = f'{testing_folder}\\{str_channel}'
+
+            if not os.path.exists(testing_channel_path):
+                self.__logger.debug(f'Khoi tao thu muc "{testing_channel_path}"')
+                os.makedirs(testing_channel_path)
+            # end if
+
+            for subject in Subject:
+                # region Khởi tạo thư mục subject test
+                str_subject = subject.value
+                testing_subject_folder = f'{testing_channel_path}\\{str_subject}'
+
+                if not os.path.exists(testing_subject_folder):
+                    message = f'Khoi tao thu muc "{testing_subject_folder}"'
+                    self.__logger.debug(message)
+                    os.makedirs(testing_subject_folder)
+                # end if
+                # endregion
+
+                # region Lấy các hình ảnh cho testing
+                image_paths = list(channel_dir.glob(f'*\\{str_subject}_*.png'))
+                n_images = len(image_paths)
+                n_testing = int(np.ceil(n_images * testing_rate))
+                index_random = np.random.randint(n_images, size=n_testing)
+                # endregion
+
+                # region Khởi tạo dữ liệu test
+                self.__logger.debug(f'Bat dau khoi tao data testing "{str_channel}" của {str_subject}')
+                for index in index_random:
+                    image_path = image_paths[index]
+
+                    if image_path:
+                        self.__logger.debug(f'Copy file {image_path} -> {testing_subject_folder}')
+                        shutil.copy(image_path, testing_subject_folder)
+                # end for
+                self.__logger.debug(f'Ket thuc khoi tao data testing "{str_channel}" của {str_subject}')
+                # endregion
+            # end for
+
+            self.__logger.debug(f'Ket thuc khoi tao data training, validation, testing voi channel "{channel.value}"')
+        # end for
+
+        self.__logger.debug('Ket thuc khoi tao data training, validation, testing')
+    # end validation_split()
     # endregion
 
     # region Public
@@ -352,6 +541,11 @@ class ColostateService:
 
         for index, item in data.iterrows():
             protocol = item.get('protocol', '')
+
+            if protocol != self.__target_protocol:
+                continue
+            # end if
+
             self.__logger.debug('Bắt đầu đọc protocol: {0}'.format(protocol))
             channels = item.get('channels', list())
             sample_rate = item.get('sample rate', 0)
@@ -645,14 +839,29 @@ class ColostateService:
                     self.export_time_series(bci=data, bandpass=True)
                     self.export_spectrogram(bci=data)
                     self.export_scalogram(bci=data)
+
+                    self.__validation_split(eeg_image_type=EEGImageType.TimeSeries)
+                    self.__testing_split(eeg_image_type=EEGImageType.TimeSeries)
+
+                    self.__validation_split(eeg_image_type=EEGImageType.Spectrogram)
+                    self.__testing_split(eeg_image_type=EEGImageType.Spectrogram)
+
+                    self.__validation_split(eeg_image_type=EEGImageType.Scalogram)
+                    self.__testing_split(eeg_image_type=EEGImageType.Scalogram)
                 # end if
 
                 if eeg_image_type == EEGImageType.TimeSeries:
                     self.export_time_series(bci=data, bandpass=True)
+                    self.__validation_split(eeg_image_type=EEGImageType.TimeSeries)
+                    self.__testing_split(eeg_image_type=EEGImageType.TimeSeries)
                 elif eeg_image_type == EEGImageType.Spectrogram:
                     self.export_spectrogram(bci=data)
+                    self.__validation_split(eeg_image_type=EEGImageType.Spectrogram)
+                    self.__testing_split(eeg_image_type=EEGImageType.Spectrogram)
                 elif eeg_image_type == EEGImageType.Scalogram:
                     self.export_scalogram(bci=data)
+                    self.__validation_split(eeg_image_type=EEGImageType.Scalogram)
+                    self.__testing_split(eeg_image_type=EEGImageType.Scalogram)
                 # end if
                 # endregion
             # end for
@@ -695,7 +904,7 @@ class ColostateService:
                 # endregion
             # end for
         # end for
-    # end export_image
+    # end export_full_time_image
     # endregion
     # endregion
 # end ColostateService

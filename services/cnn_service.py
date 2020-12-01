@@ -3,13 +3,14 @@ import pathlib
 import os
 
 from datetime import datetime
+from typing import List, Tuple
 # endregion
 
 # region Package (third-party)
 # region TensorFlow
-import tensorflow as tf
-# import keras (high level API) wiht tensorflow as backend
-from tensorflow import keras
+from tensorflow import data
+from tensorflow.keras.preprocessing import image_dataset_from_directory
+from tensorflow.keras.layers.experimental.preprocessing import Rescaling
 # endregion
 
 # region Scikit Learn
@@ -38,6 +39,11 @@ class CNNService:
     setting: Setting
     logger: Logger
 
+    img_height: int
+    img_width: int
+    batch_size: int
+    learning_rate: float
+
     model_folder: str
     model_name: str
     evaluate_folder: str
@@ -49,10 +55,12 @@ class CNNService:
         self.logger = logger
     # end __init__()
 
-    def load_data(self, path: str, img_height: int, img_width: int, batch_size: int):
+    def load_data(self, training_folder: str, validation_folder: str, img_height: int, img_width: int,
+                  batch_size: int) -> Tuple[data.Dataset, data.Dataset]:
         r"""
         Load dataset
-        :param path: thư mục dataset
+        :param training_folder: thư mục data training
+        :param validation_folder: thư mục data training
         :param img_height: Chiều cao hình ảnh
         :param img_width: Chiều rộng hình ảnh
         :param batch_size:
@@ -61,31 +69,28 @@ class CNNService:
             val_ds: dataset test
         """
         # region Loading data folder
-        data_dir = pathlib.Path(path)
+        training_dir = pathlib.Path(training_folder)
+        validation_dir = pathlib.Path(validation_folder)
 
-        image_count = len(list(data_dir.glob('*/*.png')))
-        self.logger.debug(str(image_count))
+        n_training = len(list(training_dir.glob('*/*.png')))
+        n_validation = len(list(training_dir.glob('*/*.png')))
+        self.logger.debug(f'Tong data: {n_training + n_validation} images '
+                          f'(training: {n_training} images | validation: {n_validation} images)')
         # endregion
 
         # region Create dataset
-        train_ds = tf.keras.preprocessing.image_dataset_from_directory(
-            data_dir,
-            validation_split=0.2,
-            subset="training",
-            seed=123,
-            image_size=(img_height, img_width),
+        train_ds: data.Dataset = image_dataset_from_directory(
+            training_dir,
+            image_size=(img_width, img_height),
             batch_size=batch_size)
 
-        val_ds = tf.keras.preprocessing.image_dataset_from_directory(
-            data_dir,
-            validation_split=0.2,
-            subset="validation",
-            seed=123,
-            image_size=(img_height, img_width),
+        val_ds: data.Dataset = image_dataset_from_directory(
+            validation_dir,
+            image_size=(img_width, img_height),
             batch_size=batch_size)
 
         class_names = train_ds.class_names
-        self.logger.debug(class_names)
+        self.logger.debug(f'Class names: {class_names}')
         # endregion
 
         return train_ds, val_ds
@@ -106,13 +111,13 @@ class CNNService:
     # end model_path
 
     # noinspection PyMethodMayBeStatic
-    def standardize_data(self, ds):
+    def standardize_data(self, ds: data.Dataset) -> data.Dataset:
         r"""
         https://www.tensorflow.org/tutorials/load_data/images#standardize_the_data
         :param ds: dataset
         :return: data standardized
         """
-        normalization_layer = keras.layers.experimental.preprocessing.Rescaling(1. / 255)
+        normalization_layer = Rescaling(1. / 255)
 
         ds = ds.map(lambda x, y: (normalization_layer(x), y))
 
@@ -193,7 +198,7 @@ class CNNService:
         return confmat
     # end show_confusion_matrix()
 
-    def evaluate(self, model, val_ds, labels, show_evaluate: bool = True):
+    def evaluate(self, model, val_ds: data.Dataset, labels: List[str], show_evaluate: bool = True):
         # Đường dẫn export file: "evaluate/lenet/lenet_evaluate.h5"
         evaluate_path = self.evaluate_path(self.evaluate_folder, self.evaluate_name)
 
@@ -201,9 +206,9 @@ class CNNService:
         val_labels = np.array([], dtype=np.int)
         pred_labels = np.array([], dtype=np.int)
 
-        for data, label in list(val_ds):
+        for image_data, label in list(val_ds):
             val_label = label.numpy()
-            pred_label = model.predict_classes(data)
+            pred_label = model.predict_classes(image_data)
             val_labels = np.append(val_labels, val_label)
             pred_labels = np.append(pred_labels, pred_label)
         # end for
@@ -222,40 +227,6 @@ class CNNService:
         confmat = self.show_confusion_matrix(labels, val_labels, pred_labels, evaluate_path, show_evaluate)
 
         return confmat
-
-        # self.__logger.debug("Test labels:")
-        # self.__logger.debug(test_labels)
-        # test_labels = [0 if x == 2 else 1 for x in test_labels]
-        # self.__logger.debug(test_labels)
-        #
-        # self.__logger.debug("Predict labels:")
-        # self.__logger.debug(pred_labels)
-        # pred_labels = [0 if x == 2 else 1 for x in pred_labels]
-        # self.__logger.debug(pred_labels)
-        #
-        # confmat = self.create_confusion_matrix(np.array(test_labels), np.array(pred_labels))
-        # tn, fp, fn, tp = confmat.ravel()
-        # self.__logger.debug("Confusion matrix: {:f} {:f} {:f} {:f}".format(tn, fp, fn, tp))
-        #
-        # # Sensitivity = TP / (TP + FN)
-        # sensitivity = tp / (tp + fn) if (tp + fn) != 0 else .0
-        # self.__logger.debug("Sensitivity: %.2f%%" % (sensitivity * 100.0))
-        #
-        # # Specificity = TN / (TN + FP)
-        # specificity = tn / (tn + fp) if (tn + fp) != 0 else .0
-        # self.__logger.debug("Specificity: %.2f%%" % (specificity * 100.0))
-        #
-        # # Accuracy = (TP + TN) / (TP + TN + FP + FN)
-        # accuracy = (tp + tn) / (tp + tn + fp + fn) if (tp + tn + fp + fn) != 0 else 0
-        # self.__logger.debug("Accuracy: %.2f%%" % (accuracy * 100.0))
-        #
-        # # F1 = 2TP / (2TP + FP + FN)
-        # f1 = 2 * tp / (2 * tp + fp + fn) if (2 * tp + fp + fn) != 0 else 0
-        # self.__logger.debug("F1: %.2f%%" % (f1 * 100.0))
-        #
-        # # Precision = TP / (TP + FP)
-        # precision = tp / (tp + fp) if (tp + fp) != 0 else 0
-        # self.__logger.debug("Precision: %.2f%%" % (precision * 100.0))
     # end evaluate()
     # endregion
 # end CNNService

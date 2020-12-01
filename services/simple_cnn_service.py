@@ -15,7 +15,7 @@ from config import Setting
 # utils
 from utlis import Logger
 # enum
-from models import AIModelType
+from enumerates import AIModelType
 # services
 from .cnn_service import CNNService
 # endregion
@@ -36,38 +36,13 @@ class SimpleCNNCallback(Callback):
 
 
 class SimpleCNNService(CNNService):
-    # region Parameters
-    __img_height: int
-    __img_width: int
-    __batch_size: int
-    # endregion
-
-    # region get
-    @property
-    def img_height(self) -> int:
-        return self.__img_height
-    # end img_height
-
-    @property
-    def img_width(self) -> int:
-        return self.__img_width
-    # end img_width
-
-    @property
-    def batch_size(self) -> int:
-        return self.__batch_size
-    # end batch_size
-    # endregion
-
     def __init__(self, setting: Setting, logger: Logger):
         super().__init__(setting, logger)
 
-        self.__img_width: int = 384
-        self.__img_height: int = 384
-        self.__batch_size: int = 32
+        self.img_width: int = 384
+        self.img_height: int = 384
+        self.batch_size: int = 32
 
-        self.setting = setting
-        self.logger = logger
         self.model_folder: str = AIModelType.SimpleCNN.value
         self.model_name: str = '{0}_model.h5'.format(AIModelType.SimpleCNN.value)
         self.evaluate_folder: str = AIModelType.SimpleCNN.value
@@ -84,7 +59,7 @@ class SimpleCNNService(CNNService):
 
         # 3 Convolution layer with Max polling
         model.add(Conv2D(32, (5, 5), activation="relu", padding="same",
-                         input_shape=(self.__img_width, self.__img_height, 3)))
+                         input_shape=(self.img_width, self.img_height, 3)))
         model.add(MaxPooling2D())
         model.add(Conv2D(64, (5, 5), activation="relu", padding="same", kernel_initializer="he_normal"))
         model.add(MaxPooling2D())
@@ -131,7 +106,7 @@ class SimpleCNNService(CNNService):
         model.fit(
             train_ds,
             validation_data=val_ds,
-            batch_size=self.__batch_size,
+            batch_size=self.batch_size,
             epochs=n_epochs,
             verbose=1,
             callbacks=callbacks)

@@ -15,7 +15,7 @@ from config import Setting
 # utils
 from utlis import Logger
 # enum
-from models import AIModelType
+from enumerates import AIModelType
 # services
 from .cnn_service import CNNService
 # endregion
@@ -36,38 +36,14 @@ class LeNetEarlyStopping(Callback):
 
 
 class LeNetService(CNNService):
-    # region Parameters
-    __img_height: int
-    __img_width: int
-    __batch_size: int
-    # endregion
-
-    # region get
-    @property
-    def img_height(self) -> int:
-        return self.__img_height
-    # end img_height
-
-    @property
-    def img_width(self) -> int:
-        return self.__img_width
-    # end img_width
-
-    @property
-    def batch_size(self) -> int:
-        return self.__batch_size
-    # end batch_size
-    # endregion
-
     def __init__(self,  setting: Setting, logger: Logger):
         super().__init__(setting, logger)
 
-        self.__img_width: int = 270
-        self.__img_height: int = 202
-        self.__batch_size: int = 1
+        self.img_width: int = 270
+        self.img_height: int = 202
+        self.batch_size: int = 1
+        self.learning_rate: float = 10e-6
 
-        self.setting = setting
-        self.logger = logger
         self.model_folder: str = AIModelType.LeNet.value
         self.model_name: str = '{0}_model.h5'.format(AIModelType.LeNet.value)
         self.evaluate_folder: str = AIModelType.LeNet.value
@@ -93,7 +69,7 @@ class LeNetService(CNNService):
 
         # 1st Layer: Convolutional Layer. Input = 32x32x1, Output = 28x28x1.
         model.add(Conv2D(filters=6, kernel_size=(5, 5), strides=(1, 1), activation="relu",
-                         input_shape=(self.__img_width, self.__img_height, 3)))
+                         input_shape=(self.img_width, self.img_height, 3)))
         # Pooling Layer. Input = 28x28x1. Output = 14x14x6.
         model.add(MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
 
@@ -129,7 +105,7 @@ class LeNetService(CNNService):
 
         # compile the model
         model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=10e-6),
+            optimizer=keras.optimizers.Adam(learning_rate=self.learning_rate),
             loss=tf.losses.SparseCategoricalCrossentropy(),
             metrics=[keras.metrics.SparseCategoricalAccuracy(name='accuracy')])
 
@@ -147,7 +123,7 @@ class LeNetService(CNNService):
         model.fit(
             train_ds,
             validation_data=val_ds,
-            batch_size=self.__batch_size,
+            batch_size=self.batch_size,
             epochs=n_epochs,
             callbacks=callbacks)
 

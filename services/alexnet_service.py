@@ -15,7 +15,7 @@ from config import Setting
 # utils
 from utlis import Logger
 # enum
-from models import AIModelType
+from enumerates import AIModelType
 # services
 from .cnn_service import CNNService
 # endregion
@@ -36,38 +36,14 @@ class AlexNetEarlyStopping(Callback):
 
 
 class AlexNetService(CNNService):
-    # region Parameters
-    __img_height: int
-    __img_width: int
-    __batch_size: int
-    # endregion
-
-    # region get
-    @property
-    def img_height(self) -> int:
-        return self.__img_height
-    # end img_height
-
-    @property
-    def img_width(self) -> int:
-        return self.__img_width
-    # end img_width
-
-    @property
-    def batch_size(self) -> int:
-        return self.__batch_size
-    # end batch_size
-    # endregion
-
     def __init__(self, setting: Setting, logger: Logger):
         super().__init__(setting, logger)
 
-        self.__img_width: int = 227
-        self.__img_height: int = 227
-        self.__batch_size: int = 1
+        self.img_width: int = 227
+        self.img_height: int = 227
+        self.batch_size: int = 1
+        self.learning_rate: float = 10e-6
 
-        self.setting = setting
-        self.logger = logger
         self.model_folder: str = AIModelType.AlexNet.value
         self.model_name: str = '{0}_model.h5'.format(AIModelType.AlexNet.value)
         self.evaluate_folder: str = AIModelType.AlexNet.value
@@ -85,7 +61,7 @@ class AlexNetService(CNNService):
 
         # 1st Layer: Conv (w ReLu) -> Lrn -> Pool
         model.add(Conv2D(filters=96, kernel_size=(11, 11), strides=(4, 4), activation="relu",
-                         input_shape=(self.__img_width, self.__img_height, 3)))
+                         input_shape=(self.img_width, self.img_height, 3)))
         model.add(BatchNormalization())
         model.add(MaxPooling2D(pool_size=(3, 3), strides=(2, 2)))
 
@@ -136,7 +112,7 @@ class AlexNetService(CNNService):
 
         # compile the model
         model.compile(
-            optimizer=keras.optimizers.SGD(learning_rate=10e-6),
+            optimizer=keras.optimizers.SGD(learning_rate=self.learning_rate),
             loss=tf.losses.SparseCategoricalCrossentropy(),
             metrics=[keras.metrics.SparseCategoricalAccuracy(name='accuracy')])
 
@@ -154,7 +130,7 @@ class AlexNetService(CNNService):
         model.fit(
             train_ds,
             validation_data=val_ds,
-            batch_size=self.__batch_size,
+            batch_size=self.batch_size,
             epochs=n_epochs,
             callbacks=callbacks)
 

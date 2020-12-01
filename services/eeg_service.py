@@ -33,6 +33,7 @@ class EEGService:
     def __butter_bandpass(self, low_cut: float, high_cut: float, fs: float,
                           order: int = 3) -> Tuple[np.ndarray, np.ndarray]:
         r"""
+        https://scipy-cookbook.readthedocs.io/items/ButterworthBandpass.html#butterworth-bandpass
         Butterworth digital and analog filter design.
 
         Design an Nth-order digital or analog Butterworth filter and return
@@ -111,6 +112,7 @@ class EEGService:
     def butter_bandpass_filter(self, data: np.ndarray, fs: float, lowcut: float = 0.5, highcut: float = 7.5,
                                order: int = 3) -> np.ndarray:
         r"""
+        https://scipy-cookbook.readthedocs.io/items/ButterworthBandpass.html#butterworth-bandpass
         We filtered frequency band from 0.5 Hz–7.5 Hz to remove low and high frequency noises and non-signal artefacts.
         Our primary focus was put on delta and theta waves frequency ranges, which based on previous work [2], [12]
         are containing spectral power changes which in most cases indicate some kind of brain pathologies.
@@ -197,7 +199,7 @@ class EEGService:
             figure = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
             plt.axis('off')
             plt.pcolormesh(t.tolist(), f.tolist(), power.tolist(), cmap='viridis', vmin=np.amin(power),
-                           vmax=np.amax(power), shading='flat')
+                           vmax=np.amax(power), shading='auto')
             plt.savefig(fname=path, dpi=dpi, bbox_inches='tight', pad_inches=0)
             plt.close(figure)
         except Exception as ex:

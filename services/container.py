@@ -9,7 +9,7 @@ from config import Setting
 # utils
 from utlis import Logger
 # services
-from services import EEGService, ColostateService, SimpleCNNService, AlexNetService, LeNetService
+from services import EEGService, ColostateService, SimpleCNNService, AlexNetService, LeNetService, GregaVrbancicService
 # endregion
 
 
@@ -23,3 +23,5 @@ class IocContainer(containers.DeclarativeContainer):
     simple_cnn_service = providers.Factory(SimpleCNNService, setting=setting, logger=logger)
     alexnet_service = providers.Factory(AlexNetService, setting=setting, logger=logger)
     lenet_service = providers.Factory(LeNetService, setting=setting, logger=logger)
+
+    grega_vrbancic_service = providers.Factory(GregaVrbancicService, setting=setting, logger=logger)
