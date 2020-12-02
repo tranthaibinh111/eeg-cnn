@@ -8,11 +8,6 @@ dataset/colostate/subjects_impaired/
 dataset/colostate/subjects_not_impaired/
 dataset/y_duoc
 
-# Evaluate folder
-evaluate/alexnet
-evaluate/lenet
-evaluate/validation-data
-
 # Export Folder
 exports/h5
 exports/images

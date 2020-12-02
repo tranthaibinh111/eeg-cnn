@@ -175,7 +175,7 @@ def evaluate_ai_model(logger: Logger, setting: Setting, eeg_image_type: EEGImage
         evaluation_matrix = np.zeros(shape=(13, 9), dtype=np.bool)
         col_index = 0
 
-        for channel in EEGChannel:
+        for channel in [EEGChannel.P3, EEGChannel.P4]:
             str_channel = channel.value
             logger.debug(f'Bat dau danh gia tren channel {str_channel}')
             model_path = f'{model_folder}\\{str_eeg_image_type}_{str_channel}_model_{str_now}.h5'
@@ -234,7 +234,7 @@ def evaluate_ai_model(logger: Logger, setting: Setting, eeg_image_type: EEGImage
 
         logger.debug(str(evaluation_matrix))
         for row in evaluation_matrix:
-            row[-1] = np.sum(row[:7]) >= len(row) / 2
+            row[-1] = np.sum(row[:7]) >= (len(row) - 1) / 2
         # end for
 
         # region Ghi kết quả đánh giá model AI
@@ -298,12 +298,12 @@ def evaluate_ai_model(logger: Logger, setting: Setting, eeg_image_type: EEGImage
 def main():
     # region Cấu hình chương trình
     # str_now: str = datetime.now().strftime('%Y%m%d%H%M%S')
-    str_now: str = '20201130234042'
+    str_now: str = '20201202210832'
     eeg_image_type = EEGImageType.Scalogram
     execute_export = False
     is_full_time = False
-    ai_model_type = AIModelType.LeNet
-    execute_build_ai_model = True
+    ai_model_type = AIModelType.AlexNet
+    execute_build_ai_model = False
     n_epochs = 50
     execute_evaluate = True
 
@@ -336,7 +336,7 @@ def main():
         data_folder: str = f'{setting.image_export_folder}\\full-time\\{str_eeg_image_type}'
 
         # # region Training và validation LeNet
-        # for channel in [EEGChannel.P3, EEGChannel.P4]:
+        # for channel in [EEGChannel.C3, EEGChannel.C4]:
         #     # region Lấy thông tin hình ảnh của channel
         #     str_channel: str = str(channel.value).upper()
         #     data_dir = pathlib.Path(f'{data_folder}\\{str_channel}')
@@ -442,7 +442,7 @@ def main():
         # region Tính toán accuracy, sensitivity, specificity, f1 từ ma trận
         logger.debug(str(evaluation_matrix))
         for row in evaluation_matrix:
-            row[-1] = np.sum(row[:7]) >= len(row) / 2
+            row[-1] = np.sum(row[:7]) >= (len(row) - 1) / 2
         # end for
 
         # region Ghi kết quả đánh giá model AI
@@ -514,7 +514,7 @@ def main():
 
     # region Build model AI và đánh giá
     if execute_build_ai_model:
-        for channel in [EEGChannel.P3, EEGChannel.P4]:
+        for channel in EEGChannel:
             # region Load dataset
             str_eeg_image_type: str = str(eeg_image_type.value)
             str_channel: str = str(channel.value).upper()

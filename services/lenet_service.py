@@ -42,6 +42,7 @@ class LeNetService(CNNService):
         self.img_width: int = 270
         self.img_height: int = 202
         self.batch_size: int = 1
+        # self.learning_rate: float = 10e-4
         self.learning_rate: float = 10e-6
 
         self.model_folder: str = AIModelType.LeNet.value

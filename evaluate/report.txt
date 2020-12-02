@@ -1,0 +1,36 @@
+- Spectrogram
+learning rate 10e-6
+    20201201220657: Grega Vrbancic
+(Accuracy: 69.23% | Sensitivity: 0.00% | Specificity: 100.00% | F1: 56.64%)
+    20201130225643: LeNet
+(Accuracy: 69.23% | Sensitivity: 0.00% | Specificity: 100.00% | F1: 56.64%)
+   20201201102712: AlexNet
+(Accuracy: 69.23% | Sensitivity: 0.00% | Specificity: 100.00% | F1: 56.64%)
+learning rate 10e-4
+    20201202113310: LeNet
+(Accuracy: 69.23% | Sensitivity: 0.00% | Specificity: 100.00% | F1: 56.64%)
+    20201202141420: AlexNet
+(Accuracy: 69.23% | Sensitivity: 0.00% | Specificity: 100.00% | F1: 56.64%)
+
+- Scalogram
+learning rate 10e-6
+    20201130234042: LeNet
+(Accuracy: 69.23% | Sensitivity: 0.00% | Specificity: 100.00% | F1: 56.64%)
+    20201201143216: AlexNet
+(Accuracy: 76.92% | Sensitivity: 25.00% | Specificity: 100.00% | F1: 71.65%)
+learning rate 10e-4
+    20201202121211: LeNet
+(Accuracy: 69.23% | Sensitivity: 0.00% | Specificity: 100.00% | F1: 56.64%)
+    20201202210832: AlexNet
+(Accuracy: 76.92% | Sensitivity: 25.00% | Specificity: 100.00% | F1: 71.65%)
+
+*) Tăng cường dữ liều (dùng hêt mẩu dữ liệu trong máy g.Tec g.GAMMAsys)
+- Spectrogram
+learning rate 10e-6
+    20201029102707: LeNet
+(Accuracy: 76.92% | Sensitivity: 25.00% | Specificity: 100.00% | F1: 71.65%)
+    20201030211257: AlexNet
+(Accuracy: 76.92% | Sensitivity: 25.00% | Specificity: 100.00% | F1: 71.65%)
+learning rate 10e-4
+    20201029204516: AlexNet
+(Accuracy: 92.31% | Sensitivity: 75.00% | Specificity: 100.00% | F1: 91.96%)

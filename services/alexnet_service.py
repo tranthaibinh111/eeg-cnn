@@ -42,7 +42,8 @@ class AlexNetService(CNNService):
         self.img_width: int = 227
         self.img_height: int = 227
         self.batch_size: int = 1
-        self.learning_rate: float = 10e-6
+        self.learning_rate: float = 10e-4
+        # self.learning_rate: float = 10e-6
 
         self.model_folder: str = AIModelType.AlexNet.value
         self.model_name: str = '{0}_model.h5'.format(AIModelType.AlexNet.value)
