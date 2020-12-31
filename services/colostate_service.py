@@ -422,6 +422,28 @@ class ColostateService:
                 n_images = len(image_paths)
                 n_validation = int(np.ceil(n_images * validation_rate))
                 index_random = np.random.randint(n_images, size=n_validation)
+
+                for i in range(n_validation - 1):
+                    conflict = False
+
+                    for j in range(i + 1, n_validation):
+                        if index_random[i] == index_random[j]:
+                            conflict = True
+                            break
+                        # end if
+                    # end for
+
+                    if conflict:
+                        while True:
+                            index_new = np.random.randint(n_images)
+
+                            if not (index_new in index_random):
+                                index_random[i] = index_new
+                                break
+                            # end if
+                        # end while
+                    # end if
+                # end for
                 # endregion
 
                 # region Khởi tạo dữ liệu test
@@ -619,7 +641,7 @@ class ColostateService:
                         data_export = EEGSignalModel(eeg.trial, eeg.channel, eeg.sample_rate, segment)
 
                         # Export the time series of the signal
-                        self.__eeg_service.export_time_series_image(path, data_export, bandpass)
+                        self.__eeg_service.export_time_series(path, data_export, bandpass)
                         index += 1
                     except Exception as ex:
                         self.__logger.error(ex)
@@ -653,7 +675,7 @@ class ColostateService:
                     )
 
                     # Export the time series of the signal
-                    self.__eeg_service.export_time_series_image(path, eeg, bandpass, w=2581, h=1949)
+                    self.__eeg_service.export_time_series(path, eeg, bandpass, w=2581, h=1949)
                 except Exception as ex:
                     self.__logger.error(ex)
                     continue
@@ -696,7 +718,7 @@ class ColostateService:
                         data_export = EEGSignalModel(eeg.trial, eeg.channel, eeg.sample_rate, segment)
 
                         # Export the time series of the signal
-                        self.__eeg_service.export_spectrogram_image(path, data_export)
+                        self.__eeg_service.export_spectrogram(path, data_export)
                         index += 1
                     except Exception as ex:
                         self.__logger.error(ex)
@@ -729,7 +751,7 @@ class ColostateService:
                     )
 
                     # Export the time series of the signal
-                    self.__eeg_service.export_spectrogram_image(path, eeg, w=2581, h=1949)
+                    self.__eeg_service.export_spectrogram(path, eeg, w=2581, h=1949)
                 except Exception as ex:
                     self.__logger.error(ex)
                     continue
@@ -772,7 +794,7 @@ class ColostateService:
                         data_export = EEGSignalModel(eeg.trial, eeg.channel, eeg.sample_rate, segment)
 
                         # Export the time series of the signal
-                        self.__eeg_service.export_scalogram_image(path, data_export)
+                        self.__eeg_service.export_scalogram(path, data_export)
                         index += 1
                     except Exception as ex:
                         self.__logger.error(ex)
@@ -805,7 +827,7 @@ class ColostateService:
                     )
 
                     # Export the time series of the signal
-                    self.__eeg_service.export_scalogram_image(path, eeg, w=2581, h=1949)
+                    self.__eeg_service.export_scalogram(path, eeg, w=2581, h=1949)
                 except Exception as ex:
                     self.__logger.error(ex)
                     continue

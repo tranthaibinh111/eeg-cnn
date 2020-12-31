@@ -1,0 +1,29 @@
+bandpass với order = 4 và filtfilt
+
+- Spectrogram
+learning rate 10e-6
+    20201223202420: Grega Vrbancic
+(Accuracy: 69.23% | Sensitivity: 0.00% | Specificity: 100.00% | F1: 56.64%)
+    20201224073200: LeNet
+(Accuracy: 69.23% | Sensitivity: 0.00% | Specificity: 100.00% | F1: 56.64%)
+    20201224202416: AlexNet
+(Accuracy: % | Sensitivity: % | Specificity: % | F1: %)
+learning rate 10e-4
+    20201224233508: LeNet
+(Accuracy: % | Sensitivity: % | Specificity: % | F1: %)
+    20201224131030: AlexNet
+(Accuracy: % | Sensitivity: % | Specificity: % | F1: %)
+
+- Scalogram
+learning rate 10e-6
+    20201224105700: LeNet
+(Accuracy: % | Sensitivity: % | Specificity: % | F1: %)
+    20201225110628: AlexNet
+(Accuracy: % | Sensitivity: % | Specificity: % | F1: %)
+    20201228120123: VGG16
+(Accuracy: 69.23% | Sensitivity: 0.00% | Specificity: 100.00% | F1: 56.64%)
+learning rate 10e-4
+    20201225001205: LeNet
+(Accuracy: % | Sensitivity: % | Specificity: % | F1: %)
+    20201225193733: AlexNet
+(Accuracy: % | Sensitivity: % | Specificity: % | F1: %)

@@ -1,3 +1,5 @@
+bandpass với order = 3 và lfilter
+
 - Spectrogram
 learning rate 10e-6
     20201201220657: Grega Vrbancic
@@ -34,3 +36,7 @@ learning rate 10e-6
 learning rate 10e-4
     20201029204516: AlexNet
 (Accuracy: 92.31% | Sensitivity: 75.00% | Specificity: 100.00% | F1: 91.96%)
+
+----------------------------------------------------------------------------
+
+

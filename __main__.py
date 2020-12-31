@@ -40,8 +40,8 @@ from utlis import Logger
 # enum
 from enumerates import EEGChannel, Subject, ImpairmentType, EEGImageType, AIModelType
 # services
-from services import IocContainer, ColostateService, SimpleCNNService, AlexNetService, LeNetService, CNNService, \
-    GregaVrbancicService
+from services import IocContainer, ColostateService, SimpleCNNService, LeNetService, AlexNetService, VGG16Service, \
+    CNNService, GregaVrbancicService
 # endregion
 
 
@@ -175,7 +175,7 @@ def evaluate_ai_model(logger: Logger, setting: Setting, eeg_image_type: EEGImage
         evaluation_matrix = np.zeros(shape=(13, 9), dtype=np.bool)
         col_index = 0
 
-        for channel in [EEGChannel.P3, EEGChannel.P4]:
+        for channel in [EEGChannel.P4]:
             str_channel = channel.value
             logger.debug(f'Bat dau danh gia tren channel {str_channel}')
             model_path = f'{model_folder}\\{str_eeg_image_type}_{str_channel}_model_{str_now}.h5'
@@ -234,7 +234,7 @@ def evaluate_ai_model(logger: Logger, setting: Setting, eeg_image_type: EEGImage
 
         logger.debug(str(evaluation_matrix))
         for row in evaluation_matrix:
-            row[-1] = np.sum(row[:7]) >= (len(row) - 1) / 2
+            row[-1] = np.sum(row[:8]) >= (len(row) - 1) / 2
         # end for
 
         # region Ghi kết quả đánh giá model AI
@@ -298,11 +298,11 @@ def evaluate_ai_model(logger: Logger, setting: Setting, eeg_image_type: EEGImage
 def main():
     # region Cấu hình chương trình
     # str_now: str = datetime.now().strftime('%Y%m%d%H%M%S')
-    str_now: str = '20201202210832'
+    str_now: str = '20201228120123'
     eeg_image_type = EEGImageType.Scalogram
     execute_export = False
     is_full_time = False
-    ai_model_type = AIModelType.AlexNet
+    ai_model_type = AIModelType.VGG16
     execute_build_ai_model = False
     n_epochs = 50
     execute_evaluate = True
@@ -316,27 +316,22 @@ def main():
     logger: Logger = container.logger()
     # Configure
     setting: Setting = container.setting()
-    # Services
-    colostate_service: ColostateService = container.colostate_service()
-    simple_cnn_service: SimpleCNNService = container.simple_cnn_service()
-    alexnet_service: AlexNetService = container.alexnet_service()
-    lenet_service: LeNetService = container.lenet_service()
-
-    grega_vrbancic_service: GregaVrbancicService = container.grega_vrbancic_service()
     # endregion
 
     # region Export Image (Time Series | Spectrogram | Scalogram)
     if execute_export:
+        colostate_service: ColostateService = container.colostate_service()
         export(logger, setting, colostate_service, eeg_image_type, is_full_time)
     # end if
     # endregion
 
     if execute_grega_vrbancic:
+        grega_vrbancic_service: GregaVrbancicService = container.grega_vrbancic_service()
         str_eeg_image_type: str = str(eeg_image_type.value)
         data_folder: str = f'{setting.image_export_folder}\\full-time\\{str_eeg_image_type}'
 
         # # region Training và validation LeNet
-        # for channel in [EEGChannel.C3, EEGChannel.C4]:
+        # for channel in [EEGChannel.P3, EEGChannel.P4]:
         #     # region Lấy thông tin hình ảnh của channel
         #     str_channel: str = str(channel.value).upper()
         #     data_dir = pathlib.Path(f'{data_folder}\\{str_channel}')
@@ -402,16 +397,16 @@ def main():
 
                 # region Lấy thông tin class name
                 subject_name = re.findall(r'^(\w\d\d)_.*\.png$', image_path.name)[0]
-                impaired_ms = [Subject.S13.value, Subject.S15.value, Subject.S16.value]
-                impaired_spinal = [Subject.S11.value]
-
-                if subject_name in impaired_ms:
-                    y_true = ImpairmentType.MS
-                elif subject_name in impaired_spinal:
-                    y_true = ImpairmentType.Spinal
-                else:
-                    y_true = ImpairmentType.Normal
-                # end if
+                # impaired_ms = [Subject.S13.value, Subject.S15.value, Subject.S16.value]
+                # impaired_spinal = [Subject.S11.value]
+                #
+                # if subject_name in impaired_ms:
+                #     y_true = ImpairmentType.MS
+                # elif subject_name in impaired_spinal:
+                #     y_true = ImpairmentType.Spinal
+                # else:
+                #     y_true = ImpairmentType.Normal
+                # # end if
                 # endregion
 
                 # Thực hiện dự đoán
@@ -431,7 +426,12 @@ def main():
                     row_index = row_index + 1
                 # end for
 
-                evaluation_matrix[row_index, col_index] = y_true == prediction
+                # evaluation_matrix[row_index, col_index] = y_true == prediction
+                if prediction == ImpairmentType.Normal.value:
+                    evaluation_matrix[row_index, col_index] = False
+                else:
+                    evaluation_matrix[row_index, col_index] = True
+                # end if
                 # endregion
             # end for
 
@@ -504,17 +504,19 @@ def main():
 
     # region Khởi tạo service CNN
     if ai_model_type == AIModelType.SimpleCNN:
-        cnn_service = simple_cnn_service
+        cnn_service = container.simple_cnn_service()
     elif ai_model_type == AIModelType.LeNet:
-        cnn_service = lenet_service
-    else:
-        cnn_service = alexnet_service
+        cnn_service = container.lenet_service()
+    elif ai_model_type == AIModelType.AlexNet:
+        cnn_service = container.alexnet_service()
+    elif ai_model_type == AIModelType.VGG16:
+        cnn_service = container.vgg16_service()
     # end if
     # endregion
 
     # region Build model AI và đánh giá
     if execute_build_ai_model:
-        for channel in EEGChannel:
+        for channel in [EEGChannel.P4]:
             # region Load dataset
             str_eeg_image_type: str = str(eeg_image_type.value)
             str_channel: str = str(channel.value).upper()

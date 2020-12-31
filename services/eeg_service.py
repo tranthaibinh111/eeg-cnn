@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pywt
 
-from scipy.signal import butter, lfilter, stft
+from scipy.signal import butter, filtfilt, stft
 # endregion
 
 # region motor impairment neural disorders
@@ -30,8 +30,30 @@ class EEGService:
 
     # region Private
     # noinspection PyMethodMayBeStatic
+    def __butter_lowpass(self, cutoff: float, fs: float, order: int = 5) -> Tuple[np.ndarray, np.ndarray]:
+        r"""
+        Butterworth digital and analog filter design.
+
+        Design an Nth-order digital or analog Butterworth filter and return
+        the filter coefficients.
+        :param cutoff: The frequency cut
+        :param fs: The sample rate
+        :param order: The order of the filter
+        :return:
+            b, a : ndarray, ndarray
+            Numerator (`b`) and denominator (`a`) polynomials of the IIR filter.
+            Only returned if ``output='ba'``.
+        """
+        nyq = 0.5 * fs
+        normal = cutoff / nyq
+        b, a = butter(N=order, Wn=normal, btype='lowpass', analog=False)
+
+        return b, a
+    # end __butter_lowpass()
+
+    # noinspection PyMethodMayBeStatic
     def __butter_bandpass(self, low_cut: float, high_cut: float, fs: float,
-                          order: int = 3) -> Tuple[np.ndarray, np.ndarray]:
+                          order: int = 5) -> Tuple[np.ndarray, np.ndarray]:
         r"""
         https://scipy-cookbook.readthedocs.io/items/ButterworthBandpass.html#butterworth-bandpass
         Butterworth digital and analog filter design.
@@ -50,13 +72,13 @@ class EEGService:
         nyq = 0.5 * fs
         low = low_cut / nyq
         high = high_cut / nyq
-        b, a = butter(N=order, Wn=[low, high], btype='band')
+        b, a = butter(N=order, Wn=[low, high], btype='bandpass')
 
         return b, a
     # end __butter_bandpass()
 
     # noinspection PyMethodMayBeStatic
-    def __stft(self, fs: float, data: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def __stft(self, fs: float, data: np.ndarray, cutoff: float = 7.5) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         r"""
         Compute the Short Time Fourier Transform (STFT).
         [23] P. Xia, J. Hu, and Y. Peng, “UCI-Based Estimation of Limb Movement Using Deep Learning With Recurrent
@@ -64,6 +86,7 @@ class EEGService:
         :param fs: The frequency
         :param data: ndarray (type: float)
             UCI signal data
+        :param cutoff:
         :return:
             frequencies: ndarray (type: float)
                 Array of frequencies
@@ -80,37 +103,104 @@ class EEGService:
             noverlap=20
         )
 
+        # region Lọc lấy tần số 0 - 7.5
+        f_cut = np.array(list(), dtype=np.float64)
+
+        for y in f:
+            f_cut = np.append(f_cut, y)
+
+            if y >= cutoff:
+                break
+            # end if
+        # end for
+
+        zxx_cut = np.zeros(shape=(len(f_cut), len(t)), dtype=np.complex128)
+
+        for y in range(len(f_cut)):
+            for x in range(len(t)):
+                zxx_cut[y, x] = zxx[y, x]
+            # end for
+        # end for
+        # endregion
+
         # https://www.youtube.com/watch?v=g1_wcbGUcDY
         # see better (power in dBs)
-        power = np.array(10 * np.ma.log10(np.abs(zxx)), dtype=np.float64)
-        return f, t, power
+        power = np.array(10 * np.ma.log10(np.abs(zxx_cut)), dtype=np.float64)
+
+        return f_cut, t, power
     # end __stft()
 
     # noinspection PyMethodMayBeStatic
-    def __cwt(self, data: np.ndarray) -> np.ndarray:
+    def __cwt(self, data: np.ndarray, fs: float, cutoff: float = 7.5) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         r"""
         One dimensional Continuous Wavelet Transform.
         [25] M. P. G. Bhosale and S. T. Patil, “Classification of EEG Signals Using Wavelet Transform and Hybrid
         Classifier For Parkinson’s Disease Detection,” Int. J. Eng., vol. 2, no. 1, 2013.
         :param data: ndarray (type: float)
             UCI signal data
+        :param fs: the frequency
+        :param cutoff:
         :return:
             power: ndarray (type: float)
                 WT of `x`
         """
-        scales = np.arange(1, 51)
-        coefs, _ = pywt.cwt(data, scales, 'morl')
-        power = np.array(np.ma.log2(np.power(np.abs(coefs), 2)), dtype=np.float64)
+        scales = np.arange(1, fs + 1)
+        sampling_period = 1 / fs
+        coefs, freqs = pywt.cwt(data, scales, 'morl', sampling_period=sampling_period, method='fft')
 
-        return power
+        # region Lọc lấy tần số 0 - 7.5
+        t = np.arange(0, coefs.shape[1])
+        f_cut = np.array(list(), dtype=np.float64)
+
+        for y in freqs:
+            if y >= 7.5:
+                continue
+            # end if
+
+            f_cut = np.append(f_cut, y)
+        # end for
+
+        coefs_cut = np.zeros(shape=(len(f_cut), len(t)), dtype=np.complex128)
+
+        for y in range(len(f_cut)):
+            for x in range(len(t)):
+                coefs_cut[y, x] = coefs[y, x]
+        # endregion
+
+        power = np.array(np.ma.log2(np.power(np.abs(coefs_cut), 2)), dtype=np.float64)
+
+        return f_cut, t, power
 
     # end __cwt()
     # endregion
 
     # region Public
     # region Handle
+    def butter_lowpass_filter(self, data: np.ndarray, fs: float, cutoff: float = 7.5, order: int = 4) -> np.ndarray:
+        r"""
+        To test the proposed method we used the Colorado State University brain-computer (BCI) collection [19] of EEG
+        signals, which were acquired using g.Tec g.GAMMASys active electrodes. Recordings where captured with eight
+        active electrodes (8 channels) with sampling frequency of 256 Hz and a hardware bandpass filter from
+        0.5 Hz –100 Hz at -3 dB attenuation [20]
+
+        [20] E. Forney, C. Anderson, W. Gavin, et al., “Echo state networks for modeling and classification of EEG
+            signals in mental-task braincomputer interfaces”, Colorado State University Technical Report CS-15-102, 2015
+        :param data: An N-dimensional input array.
+        :param cutoff: The frequency cut
+        :param fs: The sample rate
+        :param order: The order of the filter
+        :return:
+            y : array
+            The output of the digital filter.
+        """
+        b, a = self.__butter_lowpass(cutoff, fs, order=order)
+        y = filtfilt(b, a, data)
+
+        return np.array(y, dtype=np.float)
+    # end butter_lowpass_filter()
+
     def butter_bandpass_filter(self, data: np.ndarray, fs: float, lowcut: float = 0.5, highcut: float = 7.5,
-                               order: int = 3) -> np.ndarray:
+                               order: int = 4) -> np.ndarray:
         r"""
         https://scipy-cookbook.readthedocs.io/items/ButterworthBandpass.html#butterworth-bandpass
         We filtered frequency band from 0.5 Hz–7.5 Hz to remove low and high frequency noises and non-signal artefacts.
@@ -132,7 +222,7 @@ class EEGService:
             The output of the digital filter.
         """
         b, a = self.__butter_bandpass(lowcut, highcut, fs, order=order)
-        y = lfilter(b, a, data)
+        y = filtfilt(b, a, data)
 
         return np.array(y, dtype=np.float)
     # end butter_bandpass_filter()
@@ -151,13 +241,13 @@ class EEGService:
         plt.show()
     # end show_time_series()
 
-    def export_time_series_image(self, path: str, eeg_signal: EEGSignalModel, bandpass: bool = False, w: int = 496,
-                                 h: int = 496, dpi: int = 300):
+    def export_time_series(self, path: str, eeg_signal: EEGSignalModel, lowpass: bool = False, w: int = 496,
+                           h: int = 496, dpi: int = 300):
         r"""
         Export the time series image of the signal
         :param path: The path to save the file
         :param eeg_signal: The EEG signal
-        :param bandpass: Are you execute the bandpass filter 0.5Hz - 7.5Hz
+        :param lowpass: Are you execute the bandpass filter 0.5Hz - 7.5Hz
         :param w: image width
         :param h: image height
         :param dpi: dots-per-inch
@@ -165,12 +255,18 @@ class EEGService:
         """
         try:
             self.__logger.debug('Bắt đầu khởi tạo hình ảnh Time Series {0}'.format(path))
-            signal = eeg_signal.signal if not bandpass else self.butter_bandpass_filter(eeg_signal.signal,
-                                                                                        eeg_signal.sample_rate)
+            length = float(len(eeg_signal.signal)) / float(eeg_signal.sample_rate)
+            time = np.linspace(0, length, len(eeg_signal.signal))
+
+            if not lowpass:
+                signal = eeg_signal.signal
+            else:
+                signal = self.butter_lowpass_filter(eeg_signal.signal, eeg_signal.sample_rate)
+            # end if
+
             # Plot
             figure = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
-            plt.axis('off')
-            plt.plot(signal)
+            plt.plot(time, signal)
             plt.savefig(fname=path, dpi=dpi, bbox_inches='tight', pad_inches=0)
             plt.close(figure)
         except Exception as ex:
@@ -180,8 +276,7 @@ class EEGService:
         # end try
     # end export_time_series_image()
 
-    def export_spectrogram_image(self, path: str, eeg_signal: EEGSignalModel, w: int = 496, h: int = 496,
-                                 dpi: int = 300):
+    def export_spectrogram(self, path: str, eeg_signal: EEGSignalModel, w: int = 496, h: int = 499, dpi: int = 300):
         r"""
         Export the spectrogram image of the signal
         :param path: The path to save the file
@@ -193,13 +288,14 @@ class EEGService:
         """
         try:
             self.__logger.debug('Bắt đầu khởi tạo hình ảnh Spectrogram {0}'.format(path))
-            signal = self.butter_bandpass_filter(eeg_signal.signal, eeg_signal.sample_rate)
+            signal = self.butter_lowpass_filter(eeg_signal.signal, eeg_signal.sample_rate)
             f, t, power = self.__stft(eeg_signal.sample_rate, signal)
+
             # Plot
             figure = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
             plt.axis('off')
             plt.pcolormesh(t.tolist(), f.tolist(), power.tolist(), cmap='viridis', vmin=np.amin(power),
-                           vmax=np.amax(power), shading='auto')
+                           vmax=np.amax(power), shading='gouraud')
             plt.savefig(fname=path, dpi=dpi, bbox_inches='tight', pad_inches=0)
             plt.close(figure)
         except Exception as ex:
@@ -209,7 +305,7 @@ class EEGService:
         # end try
     # end export_spectrogram_image()
 
-    def export_scalogram_image(self, path: str, eeg_signal: EEGSignalModel, w: int = 496, h: int = 496, dpi: int = 300):
+    def export_scalogram(self, path: str, eeg_signal: EEGSignalModel, w: int = 496, h: int = 499, dpi: int = 300):
         r"""
         Export the scalogram image of the signal
         :param path: The path to save the file
@@ -221,12 +317,14 @@ class EEGService:
         """
         try:
             self.__logger.debug('Bắt đầu khởi tạo hình ảnh Scalogram {0}'.format(path))
-            signal = self.butter_bandpass_filter(eeg_signal.signal, eeg_signal.sample_rate)
-            power = self.__cwt(signal)
+            signal = self.butter_lowpass_filter(eeg_signal.signal, eeg_signal.sample_rate)
+            f, t, power = self.__cwt(signal, eeg_signal.sample_rate)
+
             # Plot
             figure = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
             plt.axis('off')
-            plt.imshow(power.tolist(), cmap='jet', aspect='auto', vmin=np.amin(power), vmax=np.amax(power))
+            plt.pcolormesh(t.tolist(), f.tolist(), power.tolist(), cmap='jet', vmin=np.amin(power),
+                           vmax=np.amax(power), shading='gouraud')
             plt.savefig(fname=path, dpi=dpi, bbox_inches='tight', pad_inches=0)
             plt.close(figure)
         except Exception as ex:
