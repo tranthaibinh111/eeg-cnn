@@ -113,8 +113,8 @@ class AlexNetService(CNNService):
 
         # compile the model
         model.compile(
-            optimizer=keras.optimizers.SGD(learning_rate=self.learning_rate),
-            loss=tf.losses.SparseCategoricalCrossentropy(),
+            optimizer=keras.optimizers.SGD(learning_rate=self.learning_rate, momentum=.9, nesterov=True),
+            loss=tf.losses.SparseCategoricalCrossentropy(from_logits=True),
             metrics=[keras.metrics.SparseCategoricalAccuracy(name='accuracy')])
 
         # define callbacks

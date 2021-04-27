@@ -2,8 +2,8 @@
 # region TensorFlow and tf.keras
 import tensorflow as tf
 # import keras (high level API) wiht tensorflow as backend
-from tensorflow import keras
-from tensorflow.keras.applications.vgg16 import VGG16
+from tensorflow import data, keras
+from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input
 from tensorflow.keras.callbacks import Callback, ModelCheckpoint
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten
@@ -65,23 +65,33 @@ class VGG16Service(CNNService):
             input_shape=(self.img_width, self.img_height, 3)
         )
         vgg16_model.trainable = False
-        vgg16_model.summary()
-        print('VGG Pretrained Model loaded.')
 
-        model = Sequential()
-        model.add(vgg16_model)
-        model.add(Flatten(name='flatten'))
-        model.add(Dense(4096, activation='relu', name='fc1'))
-        # model.add(Dropout(.5, name='fc1_drop'))
-        model.add(Dense(4096, activation='relu', name='fc2'))
-        # model.add(Dropout(.5, name='fc2_drop'))
-        model.add(Dense(output_class_units, activation='softmax', name='predictions'))
+        x = vgg16_model.output
+        x = Flatten(name='flatten')(x)
+        x = Dense(4096, activation='relu', name='fc1')(x)
+        x = Dropout(.5, name='fc1_drop')(x)
+        x = Dense(4096, activation='relu', name='fc2')(x)
+        x = Dropout(.5, name='fc2_drop')(x)
+        predictions = Dense(output_class_units, activation='softmax', name='predictions')(x)
 
+        model = tf.keras.Model(inputs=vgg16_model.input, outputs=predictions)
         # summarize the model
         model.summary()
 
         return model
     # end build_model()
+
+    # noinspection PyMethodMayBeStatic
+    def standardize_data(self, ds: data.Dataset) -> data.Dataset:
+        r"""
+        https://www.tensorflow.org/tutorials/images/transfer_learning#rescale_pixel_values
+        :param ds: dataset
+        :return: data standardized
+        """
+        ds = ds.map(lambda x, y: (preprocess_input(x), y))
+
+        return ds
+    # end get_data_and_labels()
 
     def compile_and_fit_model(self, model, train_ds, val_ds, n_epochs: int = 50):
         # Đường dẫn export file: "exports/h5/vgg16/vgg16_model.h5"
@@ -94,7 +104,8 @@ class VGG16Service(CNNService):
         # https://towardsdatascience.com/step-by-step-vgg16-implementation-in-keras-for-beginners-a833c686ae6c
         # compile the model
         model.compile(
-            optimizer=keras.optimizers.SGD(learning_rate=self.learning_rate),
+            # optimizer=keras.optimizers.Adam(learning_rate=self.learning_rate),
+            optimizer=keras.optimizers.SGD(learning_rate=self.learning_rate, momentum=0.9, nesterov=True),
             loss=tf.losses.SparseCategoricalCrossentropy(),
             metrics=[keras.metrics.SparseCategoricalAccuracy(name='accuracy')])
 

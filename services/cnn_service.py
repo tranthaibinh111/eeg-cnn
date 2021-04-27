@@ -48,6 +48,8 @@ class CNNService:
     model_name: str
     evaluate_folder: str
     evaluate_name: str
+
+    class_names: List[str]
     # endregion
 
     def __init__(self,  setting: Setting, logger: Logger):
@@ -89,8 +91,8 @@ class CNNService:
             image_size=(img_width, img_height),
             batch_size=batch_size)
 
-        class_names = train_ds.class_names
-        self.logger.debug(f'Class names: {class_names}')
+        self.class_names = train_ds.class_names
+        self.logger.debug(f'Class names: {self.class_names}')
         # endregion
 
         return train_ds, val_ds
