@@ -31,6 +31,6 @@ ActiveTwo         g.GAMMAsys            Mindset            ActiveTwo        g.GA
 
 
 impaired - cp : s12.
-impaired - multiple sclerosis(ms) : s13, s15, s16.
-impaired - spinal cord injuries : s11.
+impaired - multiple sclerosis(ms) - đa xơ cứng : s13, s15, s16.
+impaired - spinal cord injuries - tổn thương tủy sống : s11.
 unimpaired - normal: s20, s21, s22, s23, s24, s25, s26, s27, s28.
