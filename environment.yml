@@ -2,7 +2,7 @@ name: motor_impairment_neural_disorders
 channels:
   - defaults
 dependencies:
-  - python>=3.6
+  - python==3.9
   - pip
   - numpy
   - scipy
@@ -21,4 +21,4 @@ dependencies:
     # PyWavelets
     - PyWavelets==1.1.1
     # Tensorflow
-    - tensorflow==2.3.0
+    - tensorflow==2.7.0

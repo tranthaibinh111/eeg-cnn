@@ -1,6 +1,7 @@
 # region python
 import pathlib
 import re
+import os
 
 from datetime import datetime
 from typing import List, Tuple
@@ -58,7 +59,7 @@ def export(logger: Logger, setting: Setting, colostate_service: ColostateService
     """
     try:
         # region Xuất hình ảnh tín hiệu bệnh
-        subjects_impaired_folder = r'{0}\subjects_impaired'.format(setting.dataset_folder)
+        subjects_impaired_folder = os.path.join(setting.dataset_folder, 'subjects_impaired')
 
         if is_full_time:
             colostate_service.export_full_time_image(
@@ -74,7 +75,7 @@ def export(logger: Logger, setting: Setting, colostate_service: ColostateService
         # endregion
 
         # region Xuất hình ảnh tín hiệu không bệnh
-        subjects_not_impaired_folder = r'{0}\subjects_not_impaired'.format(setting.dataset_folder)
+        subjects_not_impaired_folder = os.path.join(setting.dataset_folder, 'subjects_not_impaired')
 
         if is_full_time:
             colostate_service.export_full_time_image(
@@ -169,8 +170,8 @@ def evaluate_ai_model(logger: Logger, setting: Setting, eeg_image_type: EEGImage
     try:
         # region Đánh gia model AI
         str_eeg_image_type = eeg_image_type.value
-        test_folder = f'{setting.testing_folder}\\{str_eeg_image_type}'
-        model_folder = f'{setting.h5_export}\\{service.model_folder}'
+        test_folder = os.path.join(setting.testing_folder, str_eeg_image_type)
+        model_folder = os.path.join(setting.h5_export, service.model_folder)
 
         evaluation_matrix = np.zeros(shape=(13, 9), dtype=np.bool)
         col_index = 0
@@ -178,14 +179,15 @@ def evaluate_ai_model(logger: Logger, setting: Setting, eeg_image_type: EEGImage
         for channel in [EEGChannel.C3, EEGChannel.C4]:
             str_channel = channel.value
             logger.debug(f'Bat dau danh gia tren channel {str_channel}')
-            model_path = f'{model_folder}\\{str_eeg_image_type}_{str_channel}_model_{str_now}.h5'
+            model_file = f'{str_eeg_image_type}_{str_channel}_model_{str_now}.h5'
+            model_path = os.path.join(model_folder, model_file)
             cnn_model = tf.keras.models.load_model(model_path)
             row_index = 0
 
             for subject in Subject:
                 str_subject = subject.value
                 logger.debug(f'Bat dau nhan dang benh cho {str_subject} dua tren channel {str_channel}')
-                sub_folder = f'{test_folder}\\{str_channel}\\{str_subject}'
+                sub_folder = os.path.join(test_folder, str_channel, str_subject)
                 sub_dir = pathlib.Path(sub_folder)
                 votes = np.array(list(), dtype=np.bool)
 
@@ -297,13 +299,13 @@ def evaluate_ai_model(logger: Logger, setting: Setting, eeg_image_type: EEGImage
 
 def main():
     # region Cấu hình chương trình
-    # str_now: str = datetime.now().strftime('%Y%m%d%H%M%S')
-    str_now: str = '20210109083800'
+    str_now: str = datetime.now().strftime('%Y%m%d%H%M%S')
+    # str_now: str = '20210109083800'
     eeg_image_type = EEGImageType.Scalogram
-    execute_export = False
+    execute_export = True
     is_full_time = False
     ai_model_type = AIModelType.AlexNet
-    execute_build_ai_model = True
+    execute_build_ai_model = False
     n_epochs = 50
     execute_evaluate = False
 
@@ -328,7 +330,7 @@ def main():
     if execute_grega_vrbancic:
         grega_vrbancic_service: GregaVrbancicService = container.grega_vrbancic_service()
         str_eeg_image_type: str = str(eeg_image_type.value)
-        data_folder: str = f'{setting.image_export_folder}\\full-time\\{str_eeg_image_type}'
+        data_folder: str = os.path.join(setting.image_export_folder, 'full-time', 'str_eeg_image_type')
 
         # # region Training và validation LeNet
         # for channel in [EEGChannel.P3, EEGChannel.P4]:
@@ -371,13 +373,13 @@ def main():
         for channel in EEGChannel:
             # region Lấy thông tin hình ảnh của channel
             str_channel: str = str(channel.value).upper()
-            data_dir = pathlib.Path(f'{test_folder}\\{str_channel}')
+            data_dir = pathlib.Path(os.path.join(test_folder, str_channel))
             paths = list(data_dir.glob('*/*.png'))
             # endregion
 
             # region Load model của channel
             lenet_model_name: str = f'{str_eeg_image_type}_{str_channel}_model_{str_now}.h5'
-            lenet_model_path: str = f'{setting.h5_export}\\{grega_vrbancic_service.model_folder}\\{lenet_model_name}'
+            lenet_model_path: str = os.path.join(setting.h5_export, grega_vrbancic_service.model_folder, lenet_model_name)
             lenet_model = tf.keras.models.load_model(lenet_model_path)
             # endregion
 
@@ -520,8 +522,8 @@ def main():
             # region Load dataset
             str_eeg_image_type: str = str(eeg_image_type.value)
             str_channel: str = str(channel.value).upper()
-            training_folder: str = f'{setting.training_folder}\\{str_eeg_image_type}\\{str_channel}'
-            validation_folder: str = f'{setting.validation_folder}\\{str_eeg_image_type}\\{str_channel}'
+            training_folder: str = os.path.join(setting.training_folder, str_eeg_image_type, str_channel)
+            validation_folder: str = os.path.join(setting.validation_folder, str_eeg_image_type, str_channel)
             train_ds, val_ds, labels = load_dataset(logger, training_folder, validation_folder, cnn_service)
             # endregion
 

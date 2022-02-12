@@ -160,9 +160,9 @@ class ColostateService:
         """
         # region Kiểm tra và khởi tạo thư mục loại hình
         if is_full_time:
-            folder = f'{self.__setting.image_export_folder}\\full-time\\{folder_name}'
+            folder = os.path.join(self.__setting.image_export_folder, 'full-time', folder_name)
         else:
-            folder = f'{self.__setting.image_export_folder}\\{folder_name}'
+            folder = os.path.join(self.__setting.image_export_folder, folder_name)
         # end if
 
         if not os.path.exists(folder):
@@ -171,7 +171,7 @@ class ColostateService:
         # endregion
 
         # region Khởi tạo thư mục channels
-        folder = f'{folder}\\{channel}'
+        folder = os.path.join(folder, channel)
 
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -180,7 +180,7 @@ class ColostateService:
 
         # region Khởi tạo thư mục impairment
         impairment = impairment if impairment != 'none' else 'normal'
-        folder = f'{folder}\\{impairment}'
+        folder = os.path.join(folder, impairment)
 
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -194,7 +194,7 @@ class ColostateService:
         file_name = f's{subject}_{device}_{protocol}_{trial}_{s_time}_{e_time}.png'
         # endregion
 
-        return f'{folder}\\{file_name}'
+        return os.path.join(folder, file_name)
     # end __get_image_export_path()
 
     def __get_time_series_image_export_path(self, channel: str, impairment: str, subject: int, device: str,
@@ -345,10 +345,10 @@ class ColostateService:
         """
         self.__logger.debug('Bat dau khoi tao data training, validation')
         str_eeg_image_type = eeg_image_type.value
-        data_folder = f'{self.__setting.image_export_folder}\\{str_eeg_image_type}'
+        data_folder = os.path.join(self.__setting.image_export_folder, str_eeg_image_type)
 
         # region Lấy thông tin thư mục training
-        training_folder = f'{self.__setting.training_folder}\\{str_eeg_image_type}'
+        training_folder = os.path.join(self.__setting.training_folder, str_eeg_image_type)
 
         if not os.path.exists(training_folder):
             self.__logger.debug('Khoi tao thu muc {0}"'.format(training_folder))
@@ -360,7 +360,7 @@ class ColostateService:
         # endregion
 
         # region Lấy thông tin thư mục validation
-        validation_folder = f'{self.__setting.validation_folder}\\{str_eeg_image_type}'
+        validation_folder = os.path.join(self.__setting.validation_folder, str_eeg_image_type)
 
         if not os.path.exists(validation_folder):
             self.__logger.debug('Khoi tao thu muc {0}"'.format(validation_folder))
@@ -374,11 +374,11 @@ class ColostateService:
         for channel in EEGChannel:
             self.__logger.debug(f'Bat dau khoi tao data data training va validation voi channel "{channel.value}"')
             str_channel = channel.value
-            channel_folder = f'{data_folder}\\{str_channel}'
+            channel_folder = os.path.join(data_folder, str_channel)
             channel_dir = pathlib.Path(channel_folder)
 
             # region Khởi tạo thư mục training cho channel
-            training_channel_path = f'{training_folder}\\{str_channel}'
+            training_channel_path = os.path.join(training_folder, str_channel)
 
             if not os.path.exists(training_channel_path):
                 self.__logger.debug(f'Khoi tao thu muc "{training_channel_path}"')
@@ -387,7 +387,7 @@ class ColostateService:
             # endregion
 
             # region Khởi tạo thư mục validation cho channel
-            validation_channel_path = f'{validation_folder}\\{str_channel}'
+            validation_channel_path = os.path.join(validation_folder, str_channel)
 
             if not os.path.exists(validation_channel_path):
                 self.__logger.debug(f'Khoi tao thu muc "{validation_channel_path}"')
@@ -400,7 +400,7 @@ class ColostateService:
                 self.__logger.debug(f'Bat dau khoi tao data training va validation {str_diagnostic}')
 
                 # region Khởi tạo thư mục training cho diagnostic
-                training_diagnostic_path = f'{training_channel_path}\\{str_diagnostic}'
+                training_diagnostic_path = os.path.join(training_channel_path, str_diagnostic)
 
                 if not os.path.exists(training_diagnostic_path):
                     self.__logger.debug(f'Khoi tao thu muc "{training_diagnostic_path}"')
@@ -409,7 +409,7 @@ class ColostateService:
                 # endregion
 
                 # region Khởi tạo thư mục validation cho diagnostic
-                validation_diagnostic_path = f'{validation_channel_path}\\{str_diagnostic}'
+                validation_diagnostic_path = os.path.join(validation_channel_path, str_diagnostic)
 
                 if not os.path.exists(validation_diagnostic_path):
                     self.__logger.debug(f'Khoi tao thu muc "{validation_diagnostic_path}"')
@@ -418,7 +418,7 @@ class ColostateService:
                 # endregion
 
                 # region Lấy các hình ảnh cho testing
-                image_paths = list(channel_dir.glob(f'{str_diagnostic}\\*.png'))
+                image_paths = list(channel_dir.glob(os.path.join(str_diagnostic, '*.png')))
                 n_images = len(image_paths)
                 n_validation = int(np.ceil(n_images * validation_rate))
                 index_random = np.random.randint(n_images, size=n_validation)
@@ -478,10 +478,10 @@ class ColostateService:
         """
         self.__logger.debug('Bat dau khoi tao data testing')
         str_eeg_image_type = eeg_image_type.value
-        data_folder = f'{self.__setting.image_export_folder}\\{str_eeg_image_type}'
+        data_folder = os.path.join(self.__setting.image_export_folder, str_eeg_image_type)
 
         # region Lấy thông tin thư mục testing
-        testing_folder = f'{self.__setting.testing_folder}\\{str_eeg_image_type}'
+        testing_folder = os.path.join(self.__setting.testing_folder, str_eeg_image_type)
 
         if not os.path.exists(testing_folder):
             self.__logger.debug('Khoi tao thu muc {0}"'.format(testing_folder))
@@ -495,10 +495,10 @@ class ColostateService:
         for channel in EEGChannel:
             self.__logger.debug(f'Bat dau khoi tao data test voi channel "{channel.value}"')
             str_channel = channel.value
-            channel_folder = f'{data_folder}\\{str_channel}'
+            channel_folder = os.path.join(data_folder, str_channel)
             channel_dir = pathlib.Path(channel_folder)
 
-            testing_channel_path = f'{testing_folder}\\{str_channel}'
+            testing_channel_path = os.path.join(testing_folder, str_channel)
 
             if not os.path.exists(testing_channel_path):
                 self.__logger.debug(f'Khoi tao thu muc "{testing_channel_path}"')
@@ -508,7 +508,7 @@ class ColostateService:
             for subject in Subject:
                 # region Khởi tạo thư mục subject test
                 str_subject = subject.value
-                testing_subject_folder = f'{testing_channel_path}\\{str_subject}'
+                testing_subject_folder = os.path.join(testing_channel_path, str_subject)
 
                 if not os.path.exists(testing_subject_folder):
                     message = f'Khoi tao thu muc "{testing_subject_folder}"'
@@ -518,7 +518,7 @@ class ColostateService:
                 # endregion
 
                 # region Lấy các hình ảnh cho testing
-                image_paths = list(channel_dir.glob(f'*\\{str_subject}_*.png'))
+                image_paths = list(channel_dir.glob(os.path.join('*', f'{str_subject}_*.png')))
                 n_images = len(image_paths)
                 n_testing = int(np.ceil(n_images * testing_rate))
                 index_random = np.random.randint(n_images, size=n_testing)
@@ -852,7 +852,7 @@ class ColostateService:
         for (dir_path, dir_names, filenames) in walk(data_folder):
             for filename in filenames:
                 # region Đọc dữ liệu từ file
-                json_path = f'{dir_path}\\{filename}'
+                json_path = os.path.join(dir_path, filename)
                 data: List[BCIModel] = self.read_json(json_path)
                 # endregion
 
@@ -905,7 +905,7 @@ class ColostateService:
         for (dir_path, dir_names, filenames) in walk(data_folder):
             for filename in filenames:
                 # region Đọc dữ liệu từ file
-                json_path = f'{dir_path}\\{filename}'
+                json_path = os.path.join(dir_path, filename)
                 data: List[BCIModel] = self.read_json(json_path)
                 # endregion
 
